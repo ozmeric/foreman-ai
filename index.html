@@ -469,6 +469,7 @@ function leadHTML(l){
   return `<header><div><h2>${esc(l.name)} <span id="leadStage">${stageChip(l.stage)}</span></h2><p class="muted small">${esc(l.project)} · ${esc(l.source)} · by ${esc(l.channel)}${contact?"<br>"+contact:""}${l.subject?"<br>Subject: "+esc(l.subject):""}</p></div><button class="x" aria-label="Close">×</button></header>
   <div class="content">
     ${l.stage==="Following up" ? `<p class="small" style="font-weight:600;margin-bottom:4px">Follow-up plan</p><div class="steps">${steps}</div>` : ""}
+    ${l.pendingReply ? `<p class="small" style="color:var(--walnut);margin-bottom:6px">⏳ Their last message is queued. The AI was busy; Foreman retries every 5 minutes.</p>` : ""}
     <p class="small muted" id="aiNote" style="margin-bottom:8px">${aiOn ? "🤖 Foreman is answering this customer. Type below to jump in, or take over." : "🙋 You're handling this customer. Foreman only drafts when you ask."}</p>
     <div class="thread" id="thread" style="max-height:44vh;overflow:auto;padding-right:4px">${threadHTML(l)}</div>
     <label class="field"><span>${byEmail ? "Reply by email as "+esc(S.brand.owner) : "Reply (texting is simulated in the demo)"}</span><textarea id="ownerMsg" placeholder="Type a message to ${first}…"></textarea></label>
@@ -481,6 +482,7 @@ function leadHTML(l){
     ${l.stage!=="Booked" ? `<button class="btn" data-stage="Booked" data-id="${l.id}">Mark booked</button>` : ""}
     ${aiOn ? `<button class="btn" data-stage="You're handling" data-id="${l.id}">Take over</button>` : `<button class="btn" data-stage="In conversation" data-id="${l.id}">Let Foreman handle it</button>`}
     ${l.stage==="Following up" ? `<button class="btn" data-nextfu="${l.id}">${l.step===0 ? "Send Foreman's reply now" : "Send next follow-up now"}</button>` : ""}
+    ${l.pendingReply ? `<button class="btn" data-answernow="${l.id}">Answer their reply now</button>` : ""}
     <button class="btn primary" data-send="${l.id}">${byEmail ? "Send email" : "Send"}</button>
   </footer>`;
 }
@@ -637,6 +639,9 @@ document.addEventListener("click", async e => {
   if (d.newpost) openComposer();
   if (d.stage){ t.disabled=true; await safe(async ()=>{ await api("setStage",{id:d.id, stage:d.stage}); await refresh(); openLead(d.id); toast(d.stage==="Booked"?"Marked booked.":"You're handling this lead now."); }); t.disabled=false; }
   if (d.nextfu){ t.disabled=true; t.textContent="Writing…"; const ok = await safe(async ()=>{ await api("followUp",{id:d.nextfu}); await refresh(); openLead(d.nextfu); return true; }); if (!ok) openLead(d.nextfu); }
+  if (d.answernow){ t.disabled=true; t.textContent="Writing…";
+    const ok = await safe(async ()=>{ await api("answerNow",{id:d.answernow}); await refresh(); openLead(d.answernow); toast("Foreman answered."); return true; });
+    if (!ok){ t.disabled=false; t.textContent="Answer their reply now"; } }
   if (d.draft){ t.disabled=true; const old=t.textContent; t.textContent="Drafting…";
     const r = await safe(()=>api("draftReply",{id:d.draft})); if (r) { $("#ownerMsg").value = r.text; $("#ownerMsg").focus(); }
     t.disabled=false; t.textContent=old; }
