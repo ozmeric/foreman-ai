@@ -637,7 +637,10 @@ document.addEventListener("click", async e => {
   }
   if (d.edit) openComposer(d.edit);
   if (d.newpost) openComposer();
-  if (d.stage){ t.disabled=true; await safe(async ()=>{ await api("setStage",{id:d.id, stage:d.stage}); await refresh(); openLead(d.id); toast(d.stage==="Booked"?"Marked booked.":"You're handling this lead now."); }); t.disabled=false; }
+  if (d.stage){ t.disabled=true; if (d.stage==="In conversation") t.textContent="Foreman is replying…";
+    await safe(async ()=>{ const r = await api("setStage",{id:d.id, stage:d.stage}); await refresh(); openLead(d.id);
+      toast(d.stage==="Booked" ? "Marked booked." : d.stage==="In conversation" ? (r.answered ? "Foreman answered their last message and will handle new replies." : "Foreman will answer their next reply.") : "You're handling this lead now."); });
+    t.disabled=false; }
   if (d.nextfu){ t.disabled=true; t.textContent="Writing…"; const ok = await safe(async ()=>{ await api("followUp",{id:d.nextfu}); await refresh(); openLead(d.nextfu); return true; }); if (!ok) openLead(d.nextfu); }
   if (d.answernow){ t.disabled=true; t.textContent="Writing…";
     const ok = await safe(async ()=>{ await api("answerNow",{id:d.answernow}); await refresh(); openLead(d.answernow); toast("Foreman answered."); return true; });
