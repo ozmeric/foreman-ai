@@ -246,7 +246,8 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
     <!-- LEADS -->
     <section class="view" id="v-leads">
       <div class="head"><div><h1>Leads</h1><p class="muted">Every inquiry gets a reply in under a minute, then friendly follow-ups until they book or say no. When customers reply by email, Foreman answers them. When someone asks for a price or a visit, it hands them to you.</p></div>
-        <div class="row"><button class="btn" id="checkRepliesBtn">Check email for replies</button><button class="btn primary" id="newLeadBtn2">Send a test lead</button></div></div>
+        <div class="row"><button class="btn" id="checkRepliesBtn">Check email</button><button class="btn primary" id="newLeadBtn2">Send a test lead</button></div></div>
+      <p class="small muted" id="leadInboxNote" style="margin:-8px 0 14px"></p>
       <div class="filters" id="filters"></div>
       <div class="leadlist" id="leadList"></div>
     </section>
@@ -418,6 +419,7 @@ function renderPosts(){
 
 let leadFilter = "All";
 function renderLeads(){
+  $("#leadInboxNote").innerHTML = S.leadInbox ? `📧 Customers can also email <b>${esc(S.leadInbox)}</b>. Foreman turns each new email into a lead and replies.` : "";
   const stages = ["All","Needs you","In conversation","Following up","Booked","You're handling"];
   $("#filters").innerHTML = stages.map(s=>`<button aria-pressed="${s===leadFilter}" data-filter="${s}">${s}</button>`).join("");
   const list = S.leads.filter(l=>leadFilter==="All"||l.stage===leadFilter).sort((a,b)=>(b.stage==="Needs you")-(a.stage==="Needs you") || String(b.created).localeCompare(String(a.created)));
@@ -602,8 +604,8 @@ $("#checkRepliesBtn").onclick = async () => {
   const b=$("#checkRepliesBtn"); b.disabled=true; b.textContent="Checking inbox…";
   const r = await safe(()=>api("checkReplies"));
   await safe(refresh);
-  b.disabled=false; b.textContent="Check email for replies";
-  if (r) toast(r.found ? `Found ${r.found} new repl${r.found===1?"y":"ies"}. Foreman answered.` : "No new replies yet. Foreman also checks every 5 minutes.");
+  b.disabled=false; b.textContent="Check email";
+  if (r) toast(r.found ? `Found ${r.found} new email${r.found===1?"":"s"}. Foreman answered.` : "No new emails yet. Foreman also checks every 5 minutes.");
 };
 $("#newLeadBtn").onclick = openTestLead; $("#newLeadBtn2").onclick = openTestLead;
 $("#newPostBtn").onclick = () => openComposer();
