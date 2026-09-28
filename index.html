@@ -245,8 +245,8 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
 
     <!-- LEADS -->
     <section class="view" id="v-leads">
-      <div class="head"><div><h1>Leads</h1><p class="muted">Every inquiry gets a reply in under a minute, then friendly follow-ups until they book or say no. When someone asks for a price or a visit, it hands them to you.</p></div>
-        <button class="btn primary" id="newLeadBtn2">Send a test lead</button></div>
+      <div class="head"><div><h1>Leads</h1><p class="muted">Every inquiry gets a reply in under a minute, then friendly follow-ups until they book or say no. When customers reply by email, Foreman answers them. When someone asks for a price or a visit, it hands them to you.</p></div>
+        <div class="row"><button class="btn" id="checkRepliesBtn">Check email for replies</button><button class="btn primary" id="newLeadBtn2">Send a test lead</button></div></div>
       <div class="filters" id="filters"></div>
       <div class="leadlist" id="leadList"></div>
     </section>
@@ -418,7 +418,7 @@ function renderPosts(){
 
 let leadFilter = "All";
 function renderLeads(){
-  const stages = ["All","Needs you","Following up","Booked","You're handling"];
+  const stages = ["All","Needs you","In conversation","Following up","Booked","You're handling"];
   $("#filters").innerHTML = stages.map(s=>`<button aria-pressed="${s===leadFilter}" data-filter="${s}">${s}</button>`).join("");
   const list = S.leads.filter(l=>leadFilter==="All"||l.stage===leadFilter).sort((a,b)=>(b.stage==="Needs you")-(a.stage==="Needs you") || String(b.created).localeCompare(String(a.created)));
   const chipFor = s => s==="Needs you" ? "alert" : s==="Booked" ? "" : "brass";
@@ -462,7 +462,8 @@ function leadHTML(l){
   </div>
   <footer>
     ${l.stage!=="Booked" ? `<button class="btn" data-stage="Booked" data-id="${l.id}">Mark booked</button>` : ""}
-    ${l.stage==="Following up" ? `<button class="btn" data-stage="You're handling" data-id="${l.id}">Take over this lead</button><button class="btn" data-nextfu="${l.id}">Send next follow-up now</button>` : ""}
+    ${l.stage==="Following up" || l.stage==="In conversation" ? `<button class="btn" data-stage="You're handling" data-id="${l.id}">Take over this lead</button>` : ""}
+    ${l.stage==="Following up" ? `<button class="btn" data-nextfu="${l.id}">Send next follow-up now</button>` : ""}
     <button class="btn primary" data-send="${l.id}">Send</button>
   </footer>`;
 }
@@ -499,6 +500,7 @@ async function submitTestLead(){
     message:$("#tl-msg").value, channel: email ? "Email" : "Text"
   }}));
   if (!r){ btn.disabled=false; btn.textContent="Try again"; $("#tl-out").innerHTML=""; return; }
+  if (r.error){ $("#tl-out").innerHTML = `<p class="small" style="color:var(--alert)">Lead saved, but Foreman couldn't write the reply: ${esc(r.error)}</p>`; btn.disabled=false; btn.textContent="Try again"; await safe(refresh); return; }
   const reply = r.lead.thread.filter(m=>m.from==="ai").pop();
   $("#tl-out").innerHTML = `<div class="thread"><div class="msg ai"><span class="meta">Foreman as ${esc(S.brand.owner)} · ${r.secs} seconds</span>${esc(reply ? reply.text : "")}</div></div>
     <p class="small ${r.hot?"":"muted"}" style="margin-top:8px">${r.hot ? "This lead asked about price or a visit, so it's now in Needs you and the owner got an alert email." : "Follow-ups are scheduled. Foreman stops as soon as they reply."}${r.emailed ? " The reply was emailed for real. Check the inbox." : " Texting is simulated in this demo."}</p>`;
@@ -572,6 +574,13 @@ $("#runCycle").onclick = async () => {
   await safe(refresh);
   b.disabled=false; b.textContent="Run next autopilot check";
   if (r) toast(r.did ? "Autopilot check done. See what it did below." : "Nothing was due.");
+};
+$("#checkRepliesBtn").onclick = async () => {
+  const b=$("#checkRepliesBtn"); b.disabled=true; b.textContent="Checking inbox…";
+  const r = await safe(()=>api("checkReplies"));
+  await safe(refresh);
+  b.disabled=false; b.textContent="Check email for replies";
+  if (r) toast(r.found ? `Found ${r.found} new repl${r.found===1?"y":"ies"}. Foreman answered.` : "No new replies yet. Foreman also checks every 5 minutes.");
 };
 $("#newLeadBtn").onclick = openTestLead; $("#newLeadBtn2").onclick = openTestLead;
 $("#newPostBtn").onclick = () => openComposer();
