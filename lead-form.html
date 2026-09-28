@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cabinet and Closet Express — Free design consultation</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Public+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F6F3;--surface:#fff;--ink:#1C2320;--muted:#5E6863;--line:#E1E4DF;--green:#2F4A3E;--alert:#A6412B;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#131816;--surface:#1C2320;--ink:#E7ECE9;--muted:#9BA69F;--line:#2C3531;--green:#8DB89F;--alert:#E58A72}}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Public Sans",Arial,sans-serif}
+main{max-width:520px;margin:0 auto;padding:40px 20px}
+h1{font:700 clamp(1.6rem,5vw,2.1rem)/1.15 "Bricolage Grotesque","Avenir Next",sans-serif;margin:0 0 8px}
+p{margin:0 0 20px;color:var(--muted)}
+form{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+label{display:block;margin-bottom:14px;font-weight:600;font-size:.92rem}
+input,textarea,select{display:block;width:100%;margin-top:5px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;font-weight:400;background:var(--surface);color:var(--ink)}
+textarea{min-height:110px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:.85rem;color:var(--muted)}
+.consent input{width:auto;margin-top:3px}
+.hp{position:absolute;left:-9999px}
+button{width:100%;padding:12px;border:0;border-radius:8px;background:var(--green);color:#fff;font:600 1rem inherit;cursor:pointer}
+button:disabled{opacity:.6}
+#msg{margin-top:14px;font-size:.95rem}
+#msg.err{color:var(--alert)}
+:focus-visible{outline:2px solid #B8913E;outline-offset:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Cabinet and Closet Express</h1><p style="margin:-4px 0 6px;font-weight:600;color:inherit">Request a free design consultation</p>
+  <p>Tell us about your project. We usually reply within a minute.</p>
+  <form id="f">
+    <label>Name<input name="name" required autocomplete="name"></label>
+    <label>Email<input name="email" type="email" autocomplete="email"></label>
+    <label>Mobile phone<input name="phone" type="tel" autocomplete="tel"></label>
+    <label>Project<select name="project"><option>Kitchen cabinets</option><option>Bathroom vanity</option><option>Built-ins or pantry</option><option>Closet or walk-in</option><option>Laundry room</option><option>Something else</option></select></label>
+    <label>Tell us about it<textarea name="message" required></textarea></label>
+    <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <label class="consent"><input type="checkbox" name="consent"> I agree to receive texts about my project. Reply STOP to opt out. Msg &amp; data rates may apply.</label>
+    <button id="go">Send</button>
+    <div id="msg" role="status" aria-live="polite"></div>
+  </form>
+  <p style="text-align:center;font-size:.78rem;margin-top:24px">Foreman AI · Powered by BuildFlow · Weblina LLC</p>
+</main>
+<script>
+//<![CDATA[
+const API_URL = "https://foreman-demo.YOUR-SUBDOMAIN.workers.dev/"; // same Worker as the app
+const f = document.getElementById("f"), msg = document.getElementById("msg"), go = document.getElementById("go");
+f.onsubmit = async ev => {
+  ev.preventDefault();
+  const d = Object.fromEntries(new FormData(f));
+  if (!d.email && !d.phone){ msg.className="err"; msg.textContent="Add an email or a phone number so we can reply."; return; }
+  if (d.phone && !d.email && !d.consent){ msg.className="err"; msg.textContent="Check the box to agree to texts, or add an email instead."; return; }
+  go.disabled = true; go.textContent = "Sending…"; msg.className=""; msg.textContent="";
+  try {
+    const r = await fetch(API_URL, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({action:"publicLead", website:d.website, lead:{name:d.name, email:d.email, phone:d.phone, project:d.project, message:d.message, consent:!!d.consent}})});
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    f.innerHTML = "<h2 style='margin:0 0 8px;font-family:Bricolage Grotesque,sans-serif'>Thanks! Check your " + (d.email ? "email" : "phone") + ".</h2><p style='margin:0'>We just sent you a reply.</p>";
+  } catch(e){ msg.className="err"; msg.textContent = e.message || "Couldn't send. Please try again."; go.disabled=false; go.textContent="Send"; }
+};
+//]]>
+</script>
+</body>
+</html>

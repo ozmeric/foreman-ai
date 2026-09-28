@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Foreman AI</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F4A3E">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F6F3; --surface:#FFFFFF; --ink:#1C2320; --muted:#5E6863; --line:#E1E4DF;
+  --green:#2F4A3E; --green-soft:#E3EBE5; --walnut:#8A5A36; --brass:#B8913E; --brass-soft:#F5EDDB;
+  --alert:#A6412B; --alert-soft:#F7E6E1;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Public Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#131816; --surface:#1C2320; --ink:#E7ECE9; --muted:#9BA69F; --line:#2C3531;
+    --green:#8DB89F; --green-soft:#223029; --walnut:#D09A6C; --brass:#D6B060; --brass-soft:#2E2918;
+    --alert:#E58A72; --alert-soft:#3A221C;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#131816; --surface:#1C2320; --ink:#E7ECE9; --muted:#9BA69F; --line:#2C3531;
+  --green:#8DB89F; --green-soft:#223029; --walnut:#D09A6C; --brass:#D6B060; --brass-soft:#2E2918;
+  --alert:#E58A72; --alert-soft:#3A221C;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+img,svg{max-width:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.15;margin:0}
+h1{font-size:clamp(1.6rem,4vw,2.3rem);letter-spacing:-.01em}
+h2{font-size:1.25rem}
+h3{font-size:1rem;font-weight:500}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+
+/* shell */
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+nav.side{background:var(--green);color:#F2F5F1;padding:24px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+:root[data-theme="dark"] nav.side{background:#18211D}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) nav.side{background:#18211D}}
+.brandmark{font-family:var(--display);font-size:1.15rem;font-weight:700;margin:0 8px 22px;line-height:1.2}
+.brandmark span{display:block;font:500 .8rem var(--body);opacity:.7;margin-top:4px}
+.navbtn{display:flex;align-items:center;gap:10px;background:none;border:0;color:inherit;padding:10px 12px;border-radius:8px;text-align:left;cursor:pointer;opacity:.78}
+.navbtn:hover{opacity:1;background:rgba(255,255,255,.07)}
+.navbtn[aria-current="page"]{opacity:1;background:rgba(255,255,255,.13)}
+.navbtn .count{margin-left:auto;background:var(--brass);color:#1C2320;font-size:.75rem;font-weight:600;border-radius:10px;padding:0 7px}
+.side .foot{margin-top:auto;font-size:.78rem;opacity:.65;padding:0 8px}
+main{padding:32px clamp(16px,4vw,48px) 96px;max-width:1080px;width:100%}
+.view{display:none}.view.on{display:block}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:24px}
+.head p{margin-top:6px;max-width:60ch}
+
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  nav.side{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:20;justify-content:space-around}
+  .brandmark,.side .foot{display:none}
+  .navbtn{flex-direction:column;gap:2px;font-size:.72rem;padding:6px 8px;position:relative}
+  .navbtn .count{position:absolute;top:0;right:4px;margin:0}
+  main{padding-top:20px}
+}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);padding:9px 14px;border-radius:8px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#131816}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn.primary{color:#131816}}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.warn{color:var(--alert)}
+.btn:disabled{opacity:.5;cursor:wait}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+label.field{display:block;margin-bottom:14px}
+label.field>span{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px}
+input[type=text],input[type=tel],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{resize:vertical;min-height:84px;line-height:1.5}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:.78rem;font-weight:600;border-radius:20px;padding:2px 9px;background:var(--green-soft);color:var(--green);white-space:nowrap}
+.chip.brass{background:var(--brass-soft);color:var(--walnut)}
+.chip.alert{background:var(--alert-soft);color:var(--alert)}
+.chip.plain{background:none;border:1px solid var(--line);color:var(--muted)}
+
+/* today: the switch is the memorable piece */
+.pilot{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin-bottom:28px}
+.switch{position:relative;width:92px;height:150px;border-radius:14px;background:linear-gradient(180deg,#6B4526,#8A5A36 40%,#6B4526);box-shadow:inset 0 2px 6px rgba(0,0,0,.35);border:0;cursor:pointer;padding:0}
+.switch::before{content:"";position:absolute;inset:10px 32px;border-radius:10px;background:#2A1C10;box-shadow:inset 0 2px 5px rgba(0,0,0,.6)}
+.switch .knob{position:absolute;left:24px;width:44px;height:54px;border-radius:8px;background:linear-gradient(180deg,#E6C979,#B8913E 55%,#8F6F2A);box-shadow:0 3px 6px rgba(0,0,0,.35);transition:top .28s cubic-bezier(.3,1.4,.5,1);top:84px}
+.switch[aria-checked="true"] .knob{top:12px}
+.switch .lamp{position:absolute;right:9px;top:9px;width:9px;height:9px;border-radius:50%;background:#4a3a2a}
+.switch[aria-checked="true"] .lamp{background:#9BE28A;box-shadow:0 0 8px #9BE28A}
+@media (prefers-reduced-motion:reduce){.switch .knob{transition:none}}
+.pilot h2{font-size:clamp(1.3rem,3vw,1.7rem);margin-bottom:6px}
+.pilot .stats{display:flex;flex-wrap:wrap;gap:18px;margin:12px 0 14px}
+.pilot .stats b{font-family:var(--display);font-size:1.3rem;display:block;line-height:1}
+
+.grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:24px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.panel+.panel{margin-top:20px}
+.panel>h2{margin-bottom:12px;font-size:1.08rem}
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.feed li:first-child{border-top:0}
+.feed .ic{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--green-soft);font-size:.9rem}
+.feed li.fresh{animation:fresh 1.6s ease}
+@keyframes fresh{from{background:var(--brass-soft)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){.feed li.fresh{animation:none}}
+.need{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.need:first-of-type{border-top:0}
+.need .grow{flex:1;min-width:0}
+.empty{padding:14px;border:1px dashed var(--line);border-radius:10px;color:var(--muted)}
+
+/* posts */
+.posts{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.post{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.post .pic{aspect-ratio:16/10;background:var(--green-soft);display:block;width:100%;object-fit:cover}
+.post .body{padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex:1}
+.post .cap{font-size:.88rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+.post .acts{margin-top:auto;display:flex;gap:6px;flex-wrap:wrap}
+.post .acts .btn{padding:6px 10px;font-size:.85rem}
+.section-label{font-family:var(--display);font-weight:500;font-size:1rem;margin:26px 0 12px;display:flex;gap:8px;align-items:center}
+
+/* leads */
+.leadlist{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lead{display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:14px 16px;border-top:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
+.lead:first-child{border-top:0}
+.lead:hover{background:var(--bg)}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:var(--brass-soft);color:var(--walnut)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.filters button{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:5px 12px;cursor:pointer;font-size:.85rem}
+.filters button[aria-pressed="true"]{background:var(--green);color:#fff;border-color:var(--green)}
+:root[data-theme="dark"] .filters button[aria-pressed="true"]{color:#131816}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .filters button[aria-pressed="true"]{color:#131816}}
+
+/* dialog */
+dialog{border:0;border-radius:16px;padding:0;background:var(--surface);color:var(--ink);width:min(640px,94vw);max-height:90vh}
+dialog::backdrop{background:rgba(10,15,12,.5)}
+.dlg{display:flex;flex-direction:column;max-height:90vh}
+.dlg header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.dlg .content{padding:18px 20px;overflow:auto}
+.dlg footer{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.x{background:none;border:0;font-size:1.4rem;cursor:pointer;color:var(--muted);line-height:1}
+.thread{display:flex;flex-direction:column;gap:10px;margin:6px 0 18px}
+.msg{max-width:84%;padding:10px 13px;border-radius:12px;font-size:.92rem;white-space:pre-line}
+.msg.lead{background:var(--bg);border:1px solid var(--line);align-self:flex-start}
+.msg.ai{background:var(--green-soft);align-self:flex-end}
+.msg.owner{background:var(--brass-soft);align-self:flex-end}
+.msg .meta{display:block;font-size:.74rem;color:var(--muted);margin-bottom:3px}
+.steps{display:flex;gap:0;margin:4px 0 16px;overflow-x:auto}
+.steps div{flex:1;min-width:80px;text-align:center;font-size:.78rem;color:var(--muted);position:relative;padding-top:18px}
+.steps div::before{content:"";position:absolute;top:4px;left:50%;transform:translateX(-50%);width:11px;height:11px;border-radius:50%;border:2px solid var(--line);background:var(--surface);z-index:1}
+.steps div::after{content:"";position:absolute;top:9px;left:0;right:0;height:2px;background:var(--line)}
+.steps div.done::before{background:var(--green);border-color:var(--green)}
+.steps div.next::before{border-color:var(--brass);background:var(--brass)}
+.steps div.next{color:var(--ink);font-weight:600}
+.checks{display:flex;gap:14px;flex-wrap:wrap}
+.checks label{display:flex;gap:6px;align-items:center}
+.preview{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.preview .pic{aspect-ratio:16/9;width:100%;object-fit:cover;display:block;background:var(--green-soft)}
+
+/* settings */
+.set{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.set:first-of-type{border-top:0}
+.set .txt{max-width:56ch}
+.toggle{width:46px;height:26px;border-radius:14px;background:var(--line);border:0;position:relative;cursor:pointer;flex-shrink:0}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle[aria-checked="true"]{background:var(--green)}
+.toggle[aria-checked="true"]::after{left:23px}
+.acct{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.acct:first-of-type{border-top:0}
+.acct .logo{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-weight:700;color:#fff;font-size:.85rem}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:50;max-width:90vw;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+@media (max-width:820px){.toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}}
+.demo-note{font-size:.8rem;color:var(--muted);margin-top:10px}
+
+#gate{position:fixed;inset:0;z-index:60;background:var(--green);display:grid;place-items:center;padding:24px}
+#gate form{background:var(--surface);color:var(--ink);border-radius:16px;padding:28px;width:min(360px,100%);display:flex;flex-direction:column;gap:14px}
+#gate input{font-size:1.4rem;letter-spacing:.3em;text-align:center}
+#gate .err{color:var(--alert);min-height:1.2em;font-size:.9rem}
+.loading{opacity:.55;pointer-events:none}
+.credit{margin-top:40px;text-align:center;font-size:.78rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="gate" hidden><form id="gateForm"><h2 id="gateTitle">Foreman</h2><p class="muted small">Enter the demo PIN to continue.</p><input type="password" inputmode="numeric" autocomplete="off" id="pinIn" aria-label="PIN" required><div class="err" id="gateErr" role="alert"></div><button class="btn primary" type="submit" id="gateBtn">Open</button><p class="muted small" style="text-align:center;margin-top:4px">Foreman AI · Powered by BuildFlow · Weblina LLC</p></form></div>
+<div class="app">
+  <nav class="side" aria-label="Main">
+    <div class="brandmark" id="bm">Cabinet and Closet Express<span>Foreman AI</span></div>
+    <button class="navbtn" data-v="today" aria-current="page">🏠 <span>Today</span></button>
+    <button class="navbtn" data-v="posts">📸 <span>Posts</span></button>
+    <button class="navbtn" data-v="leads">💬 <span>Leads</span><span class="count" id="hotCount" hidden></span></button>
+    <button class="navbtn" data-v="brand">🪵 <span>Brand</span></button>
+    <button class="navbtn" data-v="pilot">⚙️ <span>Autopilot</span></button>
+    <div class="foot"><img src="./buildflow-logo.png" alt="BuildFlow by Weblina LLC" style="height:26px;opacity:.9;display:block;margin-bottom:6px" onerror="this.remove()">Foreman AI<br>Powered by BuildFlow · Weblina LLC</div>
+  </nav>
+
+  <main>
+    <!-- TODAY -->
+    <section class="view on" id="v-today">
+      <div class="head"><div><h1 id="hello">Good morning</h1><p class="muted" id="subhello"></p></div></div>
+      <div class="pilot">
+        <button class="switch" id="bigSwitch" role="switch" aria-checked="true" aria-label="Autopilot"><span class="lamp"></span><span class="knob"></span></button>
+        <div>
+          <h2 id="pilotTitle">Foreman is on the job</h2>
+          <p class="muted" id="pilotDesc"></p>
+          <div class="stats" id="stats"></div>
+          <div class="row">
+            <button class="btn primary" id="runCycle">Run next autopilot check</button>
+            <button class="btn" id="newLeadBtn">Send a test lead</button>
+          </div>
+          <p class="demo-note">In the live app, autopilot checks every hour on its own. These buttons let you watch it work.</p>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="panel"><h2>What Foreman did</h2><ul class="feed" id="feed"></ul></div>
+        <div>
+          <div class="panel"><h2>Needs you</h2><div id="needs"></div></div>
+          <div class="panel"><h2>Coming up</h2><div id="upcoming"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- POSTS -->
+    <section class="view" id="v-posts">
+      <div class="head"><div><h1>Posts</h1><p class="muted">Job photos become posts for Instagram, Facebook and Google. Foreman writes them and publishes on schedule.</p></div>
+        <button class="btn primary" id="newPostBtn">Create post from a job</button></div>
+      <div id="postGroups"></div>
+    </section>
+
+    <!-- LEADS -->
+    <section class="view" id="v-leads">
+      <div class="head"><div><h1>Leads</h1><p class="muted">Every inquiry gets a reply in under a minute, then friendly follow-ups until they book or say no. When someone asks for a price or a visit, it hands them to you.</p></div>
+        <button class="btn primary" id="newLeadBtn2">Send a test lead</button></div>
+      <div class="filters" id="filters"></div>
+      <div class="leadlist" id="leadList"></div>
+    </section>
+
+    <!-- BRAND -->
+    <section class="view" id="v-brand">
+      <div class="head"><div><h1>Brand</h1><p class="muted">Everything Foreman knows about the business. Every post and message is written from this.</p></div></div>
+      <div class="panel" style="max-width:720px">
+        <label class="field"><span>Business name</span><input type="text" id="b-name"></label>
+        <label class="field"><span>Owner or signer</span><input type="text" id="b-owner"></label>
+        <label class="field"><span>Phone</span><input type="tel" id="b-phone"></label>
+        <label class="field"><span>Service area</span><input type="text" id="b-area"></label>
+        <label class="field"><span>What you sell</span><textarea id="b-products"></textarea></label>
+        <label class="field"><span>Current offer</span><input type="text" id="b-offer"></label>
+        <label class="field"><span>Voice and tone</span><textarea id="b-tone"></textarea></label>
+        <label class="field"><span>Never say</span><input type="text" id="b-never"></label>
+        <button class="btn primary" id="saveBrand">Save brand</button>
+      </div>
+    </section>
+
+    <!-- AUTOPILOT -->
+    <section class="view" id="v-pilot">
+      <div class="head"><div><h1>Autopilot</h1><p class="muted">The rules Foreman follows when you're not looking.</p></div></div>
+      <div class="panel" style="max-width:760px">
+        <h2>Posting</h2>
+        <div class="set"><div class="txt"><h3>Publish without asking me</h3><p class="muted small">Off means every post waits in "Needs you" until you approve it.</p></div><button class="toggle" role="switch" data-set="autoPublish" aria-label="Publish without asking me"></button></div>
+        <div class="set"><div class="txt"><h3>Posts per week</h3><p class="muted small">Foreman spreads them across the week and fills gaps with tips and past jobs.</p></div><select data-set="perWeek" style="width:auto"><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+      </div>
+      <div class="panel" style="max-width:760px">
+        <h2>Lead follow-up</h2>
+        <div class="set"><div class="txt"><h3>Reply to new leads instantly</h3><p class="muted small">By text when there's a phone number, otherwise by email.</p></div><button class="toggle" role="switch" data-set="instant" aria-label="Reply to new leads instantly"></button></div>
+        <div class="set"><div class="txt"><h3>Follow-up schedule</h3><p class="muted small">Stops the moment the lead replies, books, or asks to stop.</p></div><select data-set="cadence" style="width:auto"><option value="std">Day 1, 3, 7, 14</option><option value="soft">Day 2, 7, 21</option><option value="fast">Day 1, 2, 4, 7</option></select></div>
+        <div class="set"><div class="txt"><h3>Quiet hours</h3><p class="muted small">No texts go out during these hours.</p></div><select data-set="quiet" style="width:auto"><option>8 pm – 8 am</option><option>9 pm – 9 am</option><option>7 pm – 9 am</option></select></div>
+        <div class="set"><div class="txt"><h3>Hand the lead to me when they</h3><p class="muted small">Ask about price, want someone to come measure, or seem upset.</p></div><button class="toggle" role="switch" data-set="handoff" aria-label="Hand off hot leads"></button></div>
+      </div>
+      <div class="panel" style="max-width:760px">
+        <h2>Connected accounts</h2>
+        <div id="accounts"></div>
+        <p class="demo-note">Demo: email replies are real. Social posting and texting are simulated until your accounts are connected.</p>
+      </div>
+      <p class="demo-note"><button class="btn ghost small" id="resetDemo">Reset demo data</button></p>
+    </section>
+    <footer class="credit">Foreman AI · Powered by BuildFlow · Weblina LLC</footer>
+  </main>
+</div>
+
+<dialog id="dlg"><div class="dlg" id="dlgBody"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+//<![CDATA[
+/* ============ CONFIG: change per deployment ============ */
+const CONFIG = {
+  apiUrl: "https://foreman-demo.YOUR-SUBDOMAIN.workers.dev/",  // your Cloudflare Worker URL
+  refreshSeconds: 60
+};
+
+const FINISHES = {
+  "Sage shaker": {c:"#8A9A82", w:false}, "Navy inset": {c:"#2E3A4F", w:false},
+  "White oak slab": {c:"#C8A77C", w:true}, "Warm white shaker": {c:"#ECE7DC", w:false},
+  "Charcoal slab": {c:"#3B3D3C", w:false}, "Walnut": {c:"#6E4A2E", w:true}
+};
+const PLAT = {ig:"Instagram", fb:"Facebook", gbp:"Google Business"};
+const CADENCE = {std:[0,1,3,7,14], soft:[0,2,7,21], fast:[0,1,2,4,7]};
+const STEPLBL = d => d===0 ? "Instant reply" : "Day "+d;
+
+/* ============ helpers ============ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDay = iso => new Date(iso).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+const ago = iso => { const m = Math.round((Date.now()-new Date(iso))/60000); if (m<1) return "just now"; if (m<60) return m+" min ago"; const h=Math.round(m/60); if (h<24) return h+" h ago"; return Math.round(h/24)+" d ago"; };
+const initials = n => String(n||"?").split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase();
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("on"),3200); }
+
+function cabinetSVG(finish){
+  const f = FINISHES[finish] || FINISHES["Sage shaker"];
+  const c = f.c, dark = ["#2E3A4F","#3B3D3C","#6E4A2E"].includes(c);
+  const pull = "#B8913E", wall = dark ? "#EDEAE3" : "#DCE3DD", inner = dark ? "rgba(255,255,255,.08)" : "rgba(0,0,0,.08)";
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice"><rect width="320" height="200" fill="${wall}"/>`;
+  for (let i=0;i<4;i++){ const x=24+i*70; s+=`<rect x="${x}" y="18" width="64" height="62" rx="2" fill="${c}"/>`;
+    s += f.w ? `<line x1="${x+32}" y1="18" x2="${x+32}" y2="80" stroke="${inner}"/>` : `<rect x="${x+7}" y="25" width="50" height="48" fill="none" stroke="${inner}" stroke-width="3"/>`;
+    s+=`<rect x="${x+ (i%2?6:52)}" y="62" width="4" height="12" rx="2" fill="${pull}"/>`; }
+  s+=`<rect x="0" y="112" width="320" height="8" fill="#E9E6E0"/><rect x="0" y="120" width="320" height="4" fill="#CFCAC1"/>`;
+  for (let i=0;i<4;i++){ const x=24+i*70; s+=`<rect x="${x}" y="126" width="64" height="18" rx="2" fill="${c}"/><rect x="${x+22}" y="133" width="20" height="3" rx="1.5" fill="${pull}"/>`;
+    s+=`<rect x="${x}" y="148" width="64" height="44" rx="2" fill="${c}"/>`;
+    s += f.w ? "" : `<rect x="${x+7}" y="154" width="50" height="32" fill="none" stroke="${inner}" stroke-width="3"/>`;
+    s+=`<rect x="${x+ (i%2?6:52)}" y="152" width="4" height="12" rx="2" fill="${pull}"/>`; }
+  s+=`<rect x="0" y="192" width="320" height="8" fill="#9C8E7C"/></svg>`;
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
+}
+
+/* ============ API ============ */
+let PIN = "";
+try { PIN = localStorage.getItem("foreman-pin") || ""; } catch {}
+let S = null;
+
+async function api(action, extra = {}){
+  let res;
+  try {
+    res = await fetch(CONFIG.apiUrl, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body: JSON.stringify({pin:PIN, action, ...extra})});
+  } catch { throw new Error("Can't reach the server. Check your connection."); }
+  let data;
+  try { data = await res.json(); } catch { throw new Error("The server sent an unexpected answer."); }
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+async function safe(fn){ try { return await fn(); } catch(e){ toast(e.message || "Something went wrong."); if (/PIN/.test(e.message)) showGate(); } }
+async function refresh(){ S = await api("getAll"); render(); }
+
+/* ============ PIN gate ============ */
+function showGate(msg){ $("#gate").hidden = false; $("#gateErr").textContent = msg || ""; setTimeout(()=>$("#pinIn").focus(), 50); }
+$("#gateForm").onsubmit = async ev => {
+  ev.preventDefault();
+  PIN = $("#pinIn").value.trim();
+  const b = $("#gateBtn"); b.disabled = true; b.textContent = "Checking…"; $("#gateErr").textContent = "";
+  try { await refresh(); try { localStorage.setItem("foreman-pin", PIN); } catch {} $("#gate").hidden = true; }
+  catch(e){ $("#gateErr").textContent = e.message; }
+  finally { b.disabled = false; b.textContent = "Open"; }
+};
+
+/* ============ render ============ */
+function render(){
+  if (!S) return;
+  const b = S.brand, st = S.settings;
+  $("#bm").innerHTML = esc(b.name) + "<span>Foreman AI</span>";
+  $("#gateTitle").textContent = b.name;
+  document.title = b.name + " · Foreman AI";
+  const h = new Date().getHours();
+  $("#hello").textContent = (h<12?"Good morning":h<18?"Good afternoon":"Good evening") + ", " + b.owner;
+  const hot = S.leads.filter(l=>l.stage==="Needs you"), appr = S.posts.filter(p=>p.status==="needs_approval");
+  const sched = S.posts.filter(p=>p.status==="scheduled"), pub = S.posts.filter(p=>p.status==="published");
+  const active = S.leads.filter(l=>l.stage==="Following up");
+  const needCount = hot.length + appr.length;
+  $("#subhello").textContent = needCount ? `${needCount} thing${needCount>1?"s":""} need${needCount>1?"":"s"} you today. Everything else is handled.` : "Nothing needs you right now. Everything is handled.";
+  $("#bigSwitch").setAttribute("aria-checked", !!st.autopilot);
+  $("#pilotTitle").textContent = st.autopilot ? "Foreman is on the job" : "Autopilot is paused";
+  $("#pilotDesc").textContent = st.autopilot ? "Posting to your pages and following up with every lead, in your voice." : "Nothing will post or send until you flip the switch back up.";
+  $("#stats").innerHTML = `<div><b>${sched.length}</b><span class="muted small">posts scheduled</span></div><div><b>${active.length}</b><span class="muted small">leads being followed</span></div><div><b>${pub.length}</b><span class="muted small">posts published</span></div>`;
+  const hc = $("#hotCount"); hc.hidden = !hot.length; hc.textContent = hot.length;
+
+  $("#feed").innerHTML = S.activity.slice(0,15).map(a=>`<li><span class="ic" aria-hidden="true">${esc(a.icon)}</span><div>${a.text}<div class="muted small">${ago(a.time)}</div></div></li>`).join("") || `<div class="empty">Nothing yet.</div>`;
+
+  let nd = hot.map(l=>`<div class="need"><span class="avatar">${esc(initials(l.name))}</span><div class="grow"><b>${esc(l.name)}</b> wants to talk to you<div class="muted small">${esc(l.project)} · ${esc(l.source)}</div></div><button class="btn" data-lead="${l.id}">Open</button></div>`).join("");
+  nd += appr.map(p=>`<div class="need"><span class="avatar">📸</span><div class="grow"><b>${esc(p.title)}</b> is ready to post<div class="muted small">Goes out ${fmtDay(p.date)} after you approve</div></div><button class="btn" data-approve="${p.id}">Approve</button></div>`).join("");
+  if (sched.length + appr.length < 2) nd += `<div class="need"><span class="avatar">📷</span><div class="grow"><b>Only ${sched.length + appr.length} post${sched.length + appr.length===1?"":"s"} left in the schedule</b><div class="muted small">Upload photos from recent jobs so Foreman keeps posting.</div></div><button class="btn" data-newpost="1">Add photos</button></div>`;
+  $("#needs").innerHTML = nd || `<div class="empty">You're all caught up.</div>`;
+
+  const cad = CADENCE[st.cadence] || CADENCE.std;
+  let up = sched.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3).map(p=>`<div class="need"><span class="avatar">📅</span><div class="grow">${esc(p.title)}<div class="muted small">${fmtDay(p.date)} · ${p.platforms.map(k=>PLAT[k]).join(", ")}</div></div></div>`).join("");
+  up += active.slice(0,3).map(l=>`<div class="need"><span class="avatar">💬</span><div class="grow">Follow up with ${esc(l.name)}<div class="muted small">${l.step<cad.length ? STEPLBL(cad[l.step])+" message" : "Sequence finished"}</div></div></div>`).join("");
+  $("#upcoming").innerHTML = up || `<div class="empty">Nothing scheduled. Create a post from a recent job.</div>`;
+
+  renderPosts(); renderLeads(); renderBrand(); renderPilot();
+}
+
+function postCard(p){
+  const img = p.photo || cabinetSVG(p.finish);
+  const chip = p.status==="published" ? `<span class="chip">Published ${fmtDay(p.date)}</span>` : p.status==="scheduled" ? `<span class="chip brass">Scheduled ${fmtDay(p.date)}</span>` : `<span class="chip alert">Waiting for approval</span>`;
+  const acts = p.status==="published" ? "" :
+    (p.status==="needs_approval" ? `<button class="btn primary" data-approve="${p.id}">Approve</button>` : `<button class="btn" data-publish="${p.id}">Publish now</button>`) +
+    `<button class="btn" data-edit="${p.id}">Edit</button><button class="btn ghost warn" data-del="${p.id}">Delete</button>`;
+  return `<article class="post"><img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy"><div class="body"><div class="row">${chip}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p><div class="acts">${acts}</div></div></article>`;
+}
+function renderPosts(){
+  const g = [["needs_approval","Waiting for your approval"],["scheduled","Scheduled"],["published","Published"]];
+  $("#postGroups").innerHTML = g.map(([k,l])=>{ const items=S.posts.filter(p=>p.status===k).sort((a,b)=> k==="published" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
+    return items.length ? `<div class="section-label">${l} <span class="muted small">${items.length}</span></div><div class="posts">${items.map(postCard).join("")}</div>` : ""; }).join("") || `<div class="empty">No posts yet. Create one from a finished job.</div>`;
+}
+
+let leadFilter = "All";
+function renderLeads(){
+  const stages = ["All","Needs you","Following up","Booked","You're handling"];
+  $("#filters").innerHTML = stages.map(s=>`<button aria-pressed="${s===leadFilter}" data-filter="${s}">${s}</button>`).join("");
+  const list = S.leads.filter(l=>leadFilter==="All"||l.stage===leadFilter).sort((a,b)=>(b.stage==="Needs you")-(a.stage==="Needs you") || String(b.created).localeCompare(String(a.created)));
+  const chipFor = s => s==="Needs you" ? "alert" : s==="Booked" ? "" : "brass";
+  $("#leadList").innerHTML = list.map(l=>{ const last=l.thread[l.thread.length-1] || {text:"",time:l.created};
+    return `<button class="lead" data-lead="${l.id}"><span class="avatar">${esc(initials(l.name))}</span><span><b>${esc(l.name)}</b> <span class="muted small">· ${esc(l.project)}</span><span class="muted small" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52ch">${last.from==="lead"?"":"You: "}${esc(last.text)}</span></span><span style="text-align:right"><span class="chip ${chipFor(l.stage)}">${esc(l.stage)}</span><span class="muted small" style="display:block;margin-top:4px">${ago(last.time)}</span></span></button>`; }).join("") || `<div class="empty" style="margin:14px">No leads here.</div>`;
+}
+const BRAND_KEYS = ["name","owner","phone","area","products","offer","tone","never"];
+function renderBrand(){ BRAND_KEYS.forEach(k=>{ const el=$("#b-"+k); if (document.activeElement!==el) el.value=S.brand[k]||""; }); }
+function renderPilot(){
+  document.querySelectorAll("[data-set]").forEach(el=>{ const k=el.dataset.set; if (el.classList.contains("toggle")) el.setAttribute("aria-checked", !!S.settings[k]); else el.value=S.settings[k]; });
+  const accts = [
+    ["✉","#5E6863","Email", "Replies send from your Gmail", "Live"],
+    ["⌂","#2F4A3E","Website contact form", "New inquiries flow in here", "Live"],
+    ["IG","#C1356B","Instagram", "Connects after Meta approval", "Simulated"],
+    ["f","#3B5CA8","Facebook page", "Connects after Meta approval", "Simulated"],
+    ["G","#2F7D4F","Google Business Profile", "Connects after Google approval", "Simulated"],
+    ["💬","#8A5A36","Text messages", "Connects after carrier registration", "Simulated"]];
+  $("#accounts").innerHTML = accts.map(a=>`<div class="acct"><span class="logo" style="background:${a[1]}">${a[0]}</span><div style="flex:1"><b>${a[2]}</b><div class="muted small">${esc(a[3])}</div></div><span class="chip ${a[4]==="Live"?"":"plain"}">${a[4]}</span></div>`).join("");
+}
+
+/* ============ navigation ============ */
+function go(v){ document.querySelectorAll(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v)); document.querySelectorAll(".navbtn").forEach(b=>b.setAttribute("aria-current", b.dataset.v===v ? "page" : "false")); window.scrollTo(0,0); }
+document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>go(b.dataset.v));
+
+/* ============ dialog ============ */
+const dlg = $("#dlg");
+function openDlg(html){ $("#dlgBody").innerHTML = html; if (!dlg.open) dlg.showModal(); }
+dlg.addEventListener("click", e=>{ if (e.target===dlg || e.target.closest(".x")) dlg.close(); });
+
+/* ============ lead detail ============ */
+function leadHTML(l){
+  const cad = CADENCE[S.settings.cadence] || CADENCE.std;
+  const steps = cad.map((d,i)=>`<div class="${i<l.step?"done":i===l.step && l.stage==="Following up"?"next":""}">${STEPLBL(d)}</div>`).join("");
+  const who = m => m.from==="lead" ? l.name : m.from==="ai" ? "Foreman as "+S.brand.owner : S.brand.owner;
+  const contact = [l.email, l.phone].filter(Boolean).map(esc).join(" · ");
+  return `<header><div><h2>${esc(l.name)}</h2><p class="muted small">${esc(l.project)} · ${esc(l.source)} · by ${esc(l.channel)}${contact?"<br>"+contact:""}</p></div><button class="x" aria-label="Close">×</button></header>
+  <div class="content">
+    <p class="small" style="font-weight:600;margin-bottom:4px">Follow-up plan</p><div class="steps">${steps}</div>
+    <div class="thread">${l.thread.map(m=>`<div class="msg ${m.from}"><span class="meta">${esc(who(m))} · ${ago(m.time)}${m.via?" · "+esc(m.via):""}</span>${esc(m.text)}</div>`).join("")}</div>
+    <label class="field"><span>Reply as yourself</span><textarea id="ownerMsg" placeholder="Type a message to ${esc(String(l.name).split(" ")[0])}…"></textarea></label>
+  </div>
+  <footer>
+    ${l.stage!=="Booked" ? `<button class="btn" data-stage="Booked" data-id="${l.id}">Mark booked</button>` : ""}
+    ${l.stage==="Following up" ? `<button class="btn" data-stage="You're handling" data-id="${l.id}">Take over this lead</button><button class="btn" data-nextfu="${l.id}">Send next follow-up now</button>` : ""}
+    <button class="btn primary" data-send="${l.id}">Send</button>
+  </footer>`;
+}
+function openLead(id){ const l=S.leads.find(x=>x.id===id); if (l) openDlg(leadHTML(l)); }
+
+/* ============ test lead ============ */
+const SAMPLES = [
+  {name:"Jenna Morales", source:"Website form", project:"Kitchen remodel", msg:"Hi! We just bought a house in Chesterfield and the kitchen is original from 1994. Would love new cabinets, maybe a painted green. Where do we start?"},
+  {name:"David Chen", source:"Facebook ad", project:"Pantry built-ins", msg:"Saw your pantry wall post. How much would something like that cost for an 8 foot wall?"},
+  {name:"Rachel Owens", source:"Google Business", project:"Walk-in closet", msg:"Our walk-in closet is just one rod and a shelf. Can you design something with drawers and shoe storage? We are in Midlothian."}
+];
+function openTestLead(){
+  const s = SAMPLES[Math.floor(Math.random()*SAMPLES.length)];
+  openDlg(`<header><div><h2>Send a test lead</h2><p class="muted small">Pretend you're a homeowner. Put in your own email to get the real reply in your inbox.</p></div><button class="x" aria-label="Close">×</button></header>
+  <div class="content">
+    <label class="field"><span>Name</span><input type="text" id="tl-name" value="${esc(s.name)}"></label>
+    <label class="field"><span>Email (optional, for a real reply)</span><input type="text" id="tl-email" inputmode="email" placeholder="you@example.com"></label>
+    <div class="row" style="gap:12px">
+      <label class="field" style="flex:1"><span>Came from</span><select id="tl-source">${["Website form","Facebook ad","Google Business","Instagram DM"].map(o=>`<option ${o===s.source?"selected":""}>${o}</option>`).join("")}</select></label>
+      <label class="field" style="flex:1"><span>Project</span><input type="text" id="tl-project" value="${esc(s.project)}"></label>
+    </div>
+    <label class="field"><span>Their message</span><textarea id="tl-msg">${esc(s.msg)}</textarea></label>
+    <div id="tl-out"></div>
+  </div>
+  <footer><button class="btn primary" id="tl-go">Send lead</button></footer>`);
+  $("#tl-go").onclick = submitTestLead;
+}
+async function submitTestLead(){
+  const btn=$("#tl-go"); btn.disabled=true; btn.textContent="Foreman is replying…";
+  const email = $("#tl-email").value.trim();
+  $("#tl-out").innerHTML = `<div class="thread"><div class="msg ai"><span class="meta">Foreman as ${esc(S.brand.owner)}</span>Thinking…</div></div>`;
+  const r = await safe(()=>api("newLead", {lead:{
+    name:$("#tl-name").value, email, source:$("#tl-source").value, project:$("#tl-project").value,
+    message:$("#tl-msg").value, channel: email ? "Email" : "Text"
+  }}));
+  if (!r){ btn.disabled=false; btn.textContent="Try again"; $("#tl-out").innerHTML=""; return; }
+  const reply = r.lead.thread.filter(m=>m.from==="ai").pop();
+  $("#tl-out").innerHTML = `<div class="thread"><div class="msg ai"><span class="meta">Foreman as ${esc(S.brand.owner)} · ${r.secs} seconds</span>${esc(reply ? reply.text : "")}</div></div>
+    <p class="small ${r.hot?"":"muted"}" style="margin-top:8px">${r.hot ? "This lead asked about price or a visit, so it's now in Needs you and the owner got an alert email." : "Follow-ups are scheduled. Foreman stops as soon as they reply."}${r.emailed ? " The reply was emailed for real. Check the inbox." : " Texting is simulated in this demo."}</p>`;
+  btn.textContent = r.hot ? "Handed to you" : "Replied";
+  await safe(refresh);
+}
+
+/* ============ post composer ============ */
+function resizeImage(file){
+  return new Promise((ok, fail)=>{
+    const img = new Image();
+    img.onload = () => { const c=document.createElement("canvas"), k=Math.min(1, 1200/img.width); c.width=Math.round(img.width*k); c.height=Math.round(img.height*k);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(img.src); ok(c.toDataURL("image/jpeg",.8)); };
+    img.onerror = () => fail(new Error("That file isn't an image we can read."));
+    img.src = URL.createObjectURL(file);
+  });
+}
+function brandCtx(){ const b=S.brand;
+  return `Business: ${b.name}\nOwner/signer: ${b.owner}\nPhone: ${b.phone}\nService area: ${b.area}\nProducts: ${b.products}\nCurrent offer: ${b.offer}\nVoice: ${b.tone}\nNever mention: ${b.never}`; }
+
+function openComposer(id){
+  const p = id ? S.posts.find(x=>x.id===id) : {title:"",finish:"Sage shaker",platforms:["ig","fb","gbp"],caption:"",details:"",photo:null};
+  openDlg(`<header><div><h2>${id?"Edit post":"Create post from a job"}</h2><p class="muted small">Add a photo and a few notes. Foreman writes the caption.</p></div><button class="x" aria-label="Close">×</button></header>
+  <div class="content">
+    <div class="preview"><img class="pic" id="pc-img" src="${esc(p.photo || cabinetSVG(p.finish))}" alt="Post image preview"></div>
+    <label class="field"><span>Job photo</span><input type="file" id="pc-photo" accept="image/*"></label>
+    <label class="field"><span>Post title (for you)</span><input type="text" id="pc-title" value="${esc(p.title)}" placeholder="e.g. Navy kitchen in Short Pump"></label>
+    <label class="field"><span>Finish</span><select id="pc-finish">${Object.keys(FINISHES).map(f=>`<option ${f===p.finish?"selected":""}>${f}</option>`).join("")}</select></label>
+    <label class="field"><span>About this job</span><textarea id="pc-details" placeholder="Where, what room, what changed, anything the homeowner loved">${esc(p.details||"")}</textarea></label>
+    <div class="field"><span style="display:block;font-weight:600;font-size:.88rem;margin-bottom:5px">Post to</span><div class="checks">${Object.entries(PLAT).map(([k,v])=>`<label><input type="checkbox" value="${k}" class="pc-plat" ${p.platforms.includes(k)?"checked":""}> ${v}</label>`).join("")}</div></div>
+    <label class="field"><span>Caption</span><textarea id="pc-cap" style="min-height:150px">${esc(p.caption)}</textarea></label>
+    <button class="btn" id="pc-write">✨ Write caption</button>
+  </div>
+  <footer><button class="btn primary" id="pc-save">${id?"Save changes":"Add to schedule"}</button></footer>`);
+  let photo = p.photo || null, uploading = false;
+  $("#pc-finish").onchange = e => { if (!photo) $("#pc-img").src = cabinetSVG(e.target.value); };
+  $("#pc-photo").onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    uploading = true; $("#pc-save").disabled = true; $("#pc-save").textContent = "Uploading photo…";
+    await safe(async ()=>{ const dataUrl = await resizeImage(f); $("#pc-img").src = dataUrl; const r = await api("uploadPhoto",{dataUrl}); photo = r.url; });
+    uploading = false; $("#pc-save").disabled = false; $("#pc-save").textContent = id ? "Save changes" : "Add to schedule";
+  };
+  $("#pc-write").onclick = async () => {
+    const b=$("#pc-write"); b.disabled=true; b.textContent="Writing…";
+    const plats=[...document.querySelectorAll(".pc-plat:checked")].map(x=>PLAT[x.value]).join(", ")||"Instagram";
+    const fin=$("#pc-finish").value, det=$("#pc-details").value.trim()||`${fin} cabinets for a local homeowner`;
+    const prompt = `You are Foreman, the AI marketing assistant for a cabinet and closet business.\n${brandCtx()}\n\nWrite one social post caption for ${plats} about this finished job: ${det}. Finish: ${fin}.\nUnder 90 words. Open with the transformation or a detail a homeowner would notice. At most 2 emojis. End with a call to action mentioning the free consult and ${S.brand.phone}. Put 3 to 6 local hashtags on the last line. Return only the caption.`;
+    const r = await safe(()=>api("ai",{prompt}));
+    if (r) { $("#pc-cap").value = r.text; if (!$("#pc-title").value.trim()) $("#pc-title").value = `${fin} job`; }
+    b.disabled=false; b.textContent= r ? "✨ Write another version" : "✨ Write caption";
+  };
+  $("#pc-save").onclick = async () => {
+    if (uploading) return;
+    const plats=[...document.querySelectorAll(".pc-plat:checked")].map(x=>x.value);
+    if (!plats.length) return toast("Pick at least one place to post.");
+    if (!$("#pc-cap").value.trim()) return toast("Write or generate a caption first.");
+    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo};
+    const b=$("#pc-save"); b.disabled=true; b.textContent="Saving…";
+    const r = await safe(()=>api("savePost",{item}));
+    if (r){ dlg.close(); toast(id ? "Post saved." : r.post.status==="scheduled" ? "Added to the schedule." : "Added. It'll wait for your approval."); await safe(refresh); }
+    else { b.disabled=false; b.textContent= id?"Save changes":"Add to schedule"; }
+  };
+}
+
+/* ============ events ============ */
+$("#bigSwitch").onclick = () => safe(async ()=>{ const v={...S.settings, autopilot:!S.settings.autopilot}; S.settings=v; render(); await api("saveConfig",{key:"settings", value:v}); await refresh(); });
+$("#runCycle").onclick = async () => {
+  if (!S.settings.autopilot) return toast("Autopilot is paused. Flip the switch up to run it.");
+  const b=$("#runCycle"); b.disabled=true; b.textContent="Working…";
+  const r = await safe(()=>api("runAutopilot"));
+  await safe(refresh);
+  b.disabled=false; b.textContent="Run next autopilot check";
+  if (r) toast(r.did ? "Autopilot check done. See what it did below." : "Nothing was due.");
+};
+$("#newLeadBtn").onclick = openTestLead; $("#newLeadBtn2").onclick = openTestLead;
+$("#newPostBtn").onclick = () => openComposer();
+$("#saveBrand").onclick = () => safe(async ()=>{ const v={}; BRAND_KEYS.forEach(k=>v[k]=$("#b-"+k).value.trim()); await api("saveConfig",{key:"brand", value:v}); await refresh(); toast("Brand saved. New posts and messages will use it."); });
+$("#resetDemo").onclick = () => { if (confirm("Reset all demo data?")) safe(async ()=>{ S = await api("resetDemo"); render(); toast("Demo data reset."); }); };
+document.querySelectorAll("[data-set]").forEach(el=>{
+  const saveSet = v => safe(async ()=>{ S.settings=v; render(); await api("saveConfig",{key:"settings", value:v}); });
+  if (el.classList.contains("toggle")) el.onclick=()=>saveSet({...S.settings, [el.dataset.set]: !S.settings[el.dataset.set]});
+  else el.onchange=()=>saveSet({...S.settings, [el.dataset.set]: el.value});
+});
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button"); if (!t || !S) return;
+  const d = t.dataset;
+  if (d.lead) openLead(d.lead);
+  if (d.filter){ leadFilter=d.filter; renderLeads(); }
+  if (d.approve || d.publish || d.del){
+    t.disabled = true;
+    await safe(async ()=>{
+      if (d.approve){ await api("approvePost",{id:d.approve}); toast("Approved and scheduled."); }
+      if (d.publish){ await api("publishPost",{id:d.publish}); toast("Published."); }
+      if (d.del){ if (!confirm("Delete this post?")) return; await api("deletePost",{id:d.del}); toast("Post deleted."); }
+      await refresh();
+    });
+    t.disabled = false;
+  }
+  if (d.edit) openComposer(d.edit);
+  if (d.newpost) openComposer();
+  if (d.stage){ t.disabled=true; await safe(async ()=>{ await api("setStage",{id:d.id, stage:d.stage}); await refresh(); openLead(d.id); toast(d.stage==="Booked"?"Marked booked.":"You're handling this lead now."); }); t.disabled=false; }
+  if (d.nextfu){ t.disabled=true; t.textContent="Writing…"; const ok = await safe(async ()=>{ await api("followUp",{id:d.nextfu}); await refresh(); openLead(d.nextfu); return true; }); if (!ok) openLead(d.nextfu); }
+  if (d.send){ const v=$("#ownerMsg").value.trim(); if(!v) return toast("Type a message first.");
+    t.disabled=true; await safe(async ()=>{ await api("ownerReply",{id:d.send, text:v}); await refresh(); openLead(d.send); toast("Sent."); }); t.disabled=false; }
+});
+
+/* ============ start ============ */
+(async () => {
+  if (!PIN) return showGate();
+  document.body.classList.add("loading");
+  try { await refresh(); } catch(e){ showGate(/PIN/.test(e.message) ? "" : e.message); }
+  document.body.classList.remove("loading");
+})();
+setInterval(()=>{ if (S && document.visibilityState==="visible" && !dlg.open) refresh().catch(()=>{}); }, CONFIG.refreshSeconds*1000);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+//]]>
+
+</script>
+</body>
+</html>
