@@ -478,7 +478,7 @@ function leadHTML(l){
   <footer>
     ${l.stage!=="Booked" ? `<button class="btn" data-stage="Booked" data-id="${l.id}">Mark booked</button>` : ""}
     ${aiOn ? `<button class="btn" data-stage="You're handling" data-id="${l.id}">Take over</button>` : `<button class="btn" data-stage="In conversation" data-id="${l.id}">Let Foreman handle it</button>`}
-    ${l.stage==="Following up" ? `<button class="btn" data-nextfu="${l.id}">Send next follow-up now</button>` : ""}
+    ${l.stage==="Following up" ? `<button class="btn" data-nextfu="${l.id}">${l.step===0 ? "Send Foreman's reply now" : "Send next follow-up now"}</button>` : ""}
     <button class="btn primary" data-send="${l.id}">${byEmail ? "Send email" : "Send"}</button>
   </footer>`;
 }
