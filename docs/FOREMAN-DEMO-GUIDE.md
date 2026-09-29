@@ -1,7 +1,7 @@
 # Foreman AI — Demo Guide
 **Client:** Cabinet and Closet Express (contact: Mark)
 **Built by:** Weblina LLC · Foreman AI · Powered by BuildFlow
-**Last updated:** September 28, 2026 (code version v5)
+**Last updated:** September 28, 2026 (code version v6)
 
 This is the single reference for the Foreman demo: what it does, how it's set up, how to update it, how to run the demo, what to do when something breaks, and what's planned next.
 
@@ -21,7 +21,7 @@ Foreman is an AI marketing assistant for a trade business. His team uses it; For
 
 | Real | Simulated (until the client's accounts are connected) |
 |---|---|
-| AI writing (Gemini) | Posting to Instagram / Facebook / Google Business |
+| AI writing (Gemini) | Posting to Instagram / Google Business (Facebook is real once connected, see section 12b) |
 | Email replies, sent from the demo Gmail | Text messages (see section 12 for the plan) |
 | Two-way email conversations | |
 | New leads from emails to the lead inbox | |
@@ -101,6 +101,8 @@ Never upload `Code.gs` or `worker.js` to the public GitHub repo.
 | `LEAD_INBOX` | Override the lead inbox address | No |
 | `AI_DAILY_CAP` | Max AI calls per day (default 200) | No |
 | `ANTHROPIC_KEY` | If present, Foreman uses Claude instead of Gemini | No |
+| `FB_PAGE_ID` | Facebook test Page id | For real Facebook posting |
+| `FB_PAGE_TOKEN` | Page access token (long-lived) | For real Facebook posting |
 
 Property changes take effect immediately. No redeploy needed.
 
@@ -139,7 +141,7 @@ Property changes take effect immediately. No redeploy needed.
 After every change to `Code.gs`:
 1. Save (Cmd + S).
 2. **Deploy → Manage deployments.** If there's more than one deployment, update **every** one: pencil ✏️ → Version: **New version** → Deploy.
-3. Open the `/exec` URL and confirm `"version":"v5"` (or whatever the latest is).
+3. Open the `/exec` URL and confirm `"version":"v6"` (or whatever the latest is).
 4. If you created a *new* deployment, its URL is different: update `APPS_SCRIPT_URL` in Cloudflare.
 
 Time triggers (the 5-minute inbox check, hourly autopilot) always run the latest *saved* code. The app runs the *deployed* version. If they behave differently, a deployment is out of date.
@@ -208,8 +210,8 @@ Quiet hours (default 8 pm – 8 am) pause **automatic follow-ups only**. Replies
 ## 8. Test checklist (before every demo)
 
 1. Autopilot → **Reset demo data**.
-2. Run **testAI** in Apps Script → log shows `Code version: v5` and `AI OK`.
-3. Open the Cloudflare `/exec` URL → `"version":"v5"` and `"model":"gemini-3.6-flash"`.
+2. Run **testAI** in Apps Script → log shows `Code version: v6` and `AI OK`.
+3. Open the Cloudflare `/exec` URL → `"version":"v6"` and `"model":"gemini-3.6-flash"`.
 4. Send a test lead with your personal email → reply arrives in the inbox.
 5. Reply to it → Foreman answers within about 30 seconds with the lead open.
 6. Send "How much would a closet cost? Can you come Thursday?" → no price in the reply, lead in **Needs you**, alert email arrives.
@@ -241,7 +243,7 @@ Be upfront that social posting and texting are simulated until his accounts are 
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Cannot read properties of null (reading 'getSheetByName')` | Live app on old code, or script not attached to the sheet | Paste latest `Code.gs`, deploy a new version of **every** deployment; check the Cloudflare URL points at a v5 deployment |
+| `Cannot read properties of null (reading 'getSheetByName')` | Live app on old code, or script not attached to the sheet | Paste latest `Code.gs`, deploy a new version of **every** deployment; check the Cloudflare URL points at a v6 deployment |
 | PIN accepted but screen doesn't change | Old `index.html` (PIN-screen bug) | Replace `index.html` on GitHub, Cmd + Shift + R |
 | Worker URL shows "Hello World!" | Worker code never deployed | Edit code → paste `worker.js` → Deploy |
 | "Backend returned HTML" | Apps Script access isn't **Anyone**, or the deployment is stale | Manage deployments → Anyone → New version |
@@ -311,6 +313,16 @@ Texting will work the same way as email.
 
 ---
 
+## 12b. Real Facebook posting (demo)
+
+- With `FB_PAGE_ID` and `FB_PAGE_TOKEN` set, **Publish now** and the hourly autopilot post for real to the Facebook Page. Instagram and Google stay simulated.
+- Posts with an uploaded photo become photo posts (uploaded straight from Drive); posts without a photo become text posts.
+- Published cards show **View on Facebook ↗**. Failures show **Couldn't publish** with the reason and a **Try again** button.
+- Use a **test Page** (e.g. "Foreman Demo – Weblina"), not the client's business name without permission.
+- Tests: `testFacebook` (checks the token and page), `testFacebookPost` (posts a test message).
+- If the token stops working (password change, removed permission), create a new Page token and update `FB_PAGE_TOKEN`.
+- An app in development mode may only show its posts to people with a role on the app; check the Page while logged out, and add Mark as a tester if needed.
+
 ## 13. From demo to Mark's real system
 
 Everything moves into accounts **Mark owns**, with Weblina as admin:
@@ -336,7 +348,7 @@ Start the Meta, Google Business Profile and Twilio approvals the week he signs; 
 ### Before the meeting
 - [ ] Gemini billing on (or Anthropic key added)
 - [ ] `GEMINI_MODEL` = `gemini-3.6-flash`; backups set
-- [ ] `/exec` shows v5; app hard-refreshed
+- [ ] `/exec` shows v6; app hard-refreshed
 - [ ] `NOTIFY_EMAIL` set (use Mark's email if you want him to receive the alert live)
 - [ ] Autopilot → Reset demo data
 - [ ] Full test run from section 8
