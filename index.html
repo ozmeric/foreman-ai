@@ -197,6 +197,9 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
 #gate .err{color:var(--alert);min-height:1.2em;font-size:.9rem}
 .loading{opacity:.55;pointer-events:none}
 .credit{margin-top:40px;text-align:center;font-size:.78rem;color:var(--muted)}
+.textpost{aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;padding:18px;background:linear-gradient(135deg,var(--green),#46705f);color:#fff;font-family:var(--display);font-size:1rem;line-height:1.35;text-align:center;overflow:hidden}
+.textpost span{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+.preview .textpost{aspect-ratio:16/9;font-size:1.1rem}
 </style>
 </head>
 <body>
@@ -241,7 +244,7 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
     <!-- POSTS -->
     <section class="view" id="v-posts">
       <div class="head"><div><h1>Posts</h1><p class="muted">Job photos become posts for Instagram, Facebook and Google. Foreman writes them and publishes on schedule.</p></div>
-        <div class="row"><button class="btn" id="genPostBtn">✨ Generate a post</button><button class="btn primary" id="newPostBtn">Create post from a job</button></div></div>
+        <div class="row"><button class="btn" id="genPostBtn">✨ Write a post with AI</button><button class="btn primary" id="newPostBtn">📷 Post a job photo</button></div></div>
       <div id="postGroups"></div>
     </section>
 
@@ -407,13 +410,14 @@ function render(){
 
 function postCard(p){
   const img = p.photo || cabinetSVG(p.finish);
+  const visual = (!p.photo && p.kind==="text") ? `<div class="pic textpost" aria-label="Text post"><span>${esc(String(p.caption).split("\n")[0])}</span></div>` : `<img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy">`;
   const chip = p.status==="published" ? `<span class="chip">Published ${fmtDay(p.date)}</span>` : p.status==="scheduled" ? `<span class="chip brass">Scheduled ${fmtDay(p.date)}</span>` : p.status==="failed" ? `<span class="chip alert">Couldn't publish</span>` : `<span class="chip alert">Waiting for approval</span>`;
   const fbLink = p.fbUrl ? `<a class="small" href="${esc(p.fbUrl)}" target="_blank" rel="noopener" style="color:var(--green);font-weight:600">View on Facebook ↗</a>` : "";
   const err = p.status==="failed" && p.error ? `<p class="small" style="color:var(--alert)">${esc(p.error)}</p>` : "";
   const acts = p.status==="published" ? "" :
     (p.status==="needs_approval" ? `<button class="btn primary" data-approve="${p.id}">Approve</button>` : `<button class="btn" data-publish="${p.id}">${p.status==="failed" ? "Try again" : "Publish now"}</button>`) +
     `<button class="btn" data-edit="${p.id}">Edit</button><button class="btn ghost warn" data-del="${p.id}">Delete</button>`;
-  return `<article class="post"><img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy"><div class="body"><div class="row">${chip}${p.aiImage?`<span class="chip plain">AI image</span>`:""}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
+  return `<article class="post">${visual}<div class="body"><div class="row">${chip}${p.aiImage?`<span class="chip plain">AI image</span>`:""}${(!p.photo && p.kind==="text")?`<span class="chip plain">Text post</span>`:""}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
 }
 function renderPosts(){
   const g = [["failed","Couldn't publish"],["needs_approval","Waiting for your approval"],["scheduled","Scheduled"],["published","Published"]];
@@ -555,11 +559,12 @@ function brandCtx(){ const b=S.brand;
 function openComposer(id, prefill){
   const p = id ? S.posts.find(x=>x.id===id) : Object.assign({title:"",finish:"Sage shaker",platforms:["ig","fb","gbp"],caption:"",details:"",photo:null,aiImage:false}, prefill||{});
   let aiImage = !!p.aiImage;
+  let kind = p.kind || (prefill ? "text" : "job");
   openDlg(`<header><div><h2>${id?"Edit post":prefill?"Review Foreman's post":"Create post from a job"}</h2><p class="muted small">${prefill?"Foreman wrote this. Edit anything, then add it to the schedule.":"Add a photo and a few notes. Foreman writes the caption."}</p></div><button class="x" aria-label="Close">×</button></header>
   <div class="content">
-    <div class="preview"><img class="pic" id="pc-img" src="${esc(p.photo || cabinetSVG(p.finish))}" alt="Post image preview"></div>
+    <div class="preview" id="pc-prev">${(!p.photo && kind==="text") ? `<div class="textpost" id="pc-text"><span>${esc(String(p.caption).split("\n")[0])}</span></div>` : ""}<img class="pic" id="pc-img" src="${esc(p.photo || cabinetSVG(p.finish))}" alt="Post image preview" ${(!p.photo && kind==="text")?"hidden":""}></div>
     <p class="small muted" id="pc-aiNote" style="margin:-8px 0 12px" ${aiImage?"":"hidden"}>🤖 AI-generated image. Use it for ideas and tips, not as a finished customer job.</p>
-    <label class="field"><span>Job photo</span><input type="file" id="pc-photo" accept="image/*"></label>
+    <label class="field"><span>${kind==="text" ? "Photo (optional — leave empty for a text-only post)" : "Job photo"}</span><input type="file" id="pc-photo" accept="image/*"></label>
     <label class="field"><span>Post title (for you)</span><input type="text" id="pc-title" value="${esc(p.title)}" placeholder="e.g. Navy kitchen in Short Pump"></label>
     <label class="field"><span>Finish</span><select id="pc-finish">${Object.keys(FINISHES).map(f=>`<option ${f===p.finish?"selected":""}>${f}</option>`).join("")}</select></label>
     <label class="field"><span>About this job</span><textarea id="pc-details" placeholder="Where, what room, what changed, anything the homeowner loved">${esc(p.details||"")}</textarea></label>
@@ -570,9 +575,11 @@ function openComposer(id, prefill){
   <footer><button class="btn primary" id="pc-save">${id?"Save changes":"Add to schedule"}</button></footer>`);
   let photo = p.photo || null, uploading = false;
   $("#pc-finish").onchange = e => { if (!photo) $("#pc-img").src = cabinetSVG(e.target.value); };
+  $("#pc-cap").addEventListener("input", ()=>{ const t=$("#pc-text span"); if (t) t.textContent = $("#pc-cap").value.split("\n")[0]; });
   $("#pc-photo").onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     aiImage = false; $("#pc-aiNote").hidden = true;
+    if ($("#pc-text")) $("#pc-text").remove(); $("#pc-img").hidden = false;
     uploading = true; $("#pc-save").disabled = true; $("#pc-save").textContent = "Uploading photo…";
     await safe(async ()=>{ const dataUrl = await resizeImage(f); $("#pc-img").src = dataUrl; const r = await api("uploadPhoto",{dataUrl}); photo = r.url; });
     uploading = false; $("#pc-save").disabled = false; $("#pc-save").textContent = id ? "Save changes" : "Add to schedule";
@@ -591,7 +598,7 @@ function openComposer(id, prefill){
     const plats=[...document.querySelectorAll(".pc-plat:checked")].map(x=>x.value);
     if (!plats.length) return toast("Pick at least one place to post.");
     if (!$("#pc-cap").value.trim()) return toast("Write or generate a caption first.");
-    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo, aiImage};
+    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo, aiImage, kind};
     const b=$("#pc-save"); b.disabled=true; b.textContent="Saving…";
     const r = await safe(()=>api("savePost",{item}));
     if (r){ dlg.close(); toast(id ? "Post saved." : r.post.status==="scheduled" ? "Added to the schedule." : "Added. It'll wait for your approval."); await safe(refresh); }
@@ -619,24 +626,23 @@ $("#checkRepliesBtn").onclick = async () => {
 $("#newLeadBtn").onclick = openTestLead; $("#newLeadBtn2").onclick = openTestLead;
 $("#newPostBtn").onclick = () => openComposer();
 $("#genPostBtn").onclick = () => {
-  openDlg(`<header><div><h2>✨ Generate a post</h2><p class="muted small">Foreman writes the whole post. You review it before anything is scheduled.</p></div><button class="x" aria-label="Close">×</button></header>
+  openDlg(`<header><div><h2>✨ Write a post with AI</h2><p class="muted small">Foreman writes the whole post. You review it before anything is scheduled.</p></div><button class="x" aria-label="Close">×</button></header>
   <div class="content">
     <label class="field"><span>What kind of post?</span><select id="gp-topic">
       <option value="">Surprise me</option><option value="tip">Homeowner tip</option><option value="idea">Design idea</option>
       <option value="closet">Closet and storage idea</option><option value="seasonal">Seasonal post</option>
       <option value="offer">Promote the current offer</option><option value="faq">Answer a common question</option></select></label>
-    <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="checkbox" id="gp-img" checked> Create an image with AI</label>
-    <p class="small muted">AI images are great for tips and ideas. For finished jobs, use real photos with "Create post from a job".</p>
+    <p class="small muted">Foreman writes a text post. You can add a photo in the next step if you want, or post it as text only.</p>
     <p class="small" id="gp-msg" style="margin-top:10px"></p>
   </div>
   <footer><button class="btn primary" id="gp-go">Generate</button></footer>`);
   $("#gp-go").onclick = async () => {
-    const b=$("#gp-go"), withImage=$("#gp-img").checked; b.disabled=true;
+    const b=$("#gp-go"), withImage=false; b.disabled=true;
     b.textContent = withImage ? "Writing and creating the image…" : "Writing…";
     $("#gp-msg").textContent = withImage ? "This can take 20–40 seconds." : "";
     const r = await safe(()=>api("generatePost",{topic:$("#gp-topic").value, withImage}));
     if (!r){ b.disabled=false; b.textContent="Try again"; $("#gp-msg").textContent=""; return; }
-    openComposer(null, {title:r.title, caption:r.caption, finish:r.finish, photo:r.photo, aiImage:r.aiImage, details:""});
+    openComposer(null, {title:r.title, caption:r.caption, finish:r.finish, photo:r.photo, aiImage:r.aiImage, details:"", kind:"text"});
     if (r.imageError) toast("Post written, but the image couldn't be created: " + r.imageError);
   };
 };
