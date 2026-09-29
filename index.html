@@ -241,7 +241,7 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
     <!-- POSTS -->
     <section class="view" id="v-posts">
       <div class="head"><div><h1>Posts</h1><p class="muted">Job photos become posts for Instagram, Facebook and Google. Foreman writes them and publishes on schedule.</p></div>
-        <button class="btn primary" id="newPostBtn">Create post from a job</button></div>
+        <div class="row"><button class="btn" id="genPostBtn">✨ Generate a post</button><button class="btn primary" id="newPostBtn">Create post from a job</button></div></div>
       <div id="postGroups"></div>
     </section>
 
@@ -413,7 +413,7 @@ function postCard(p){
   const acts = p.status==="published" ? "" :
     (p.status==="needs_approval" ? `<button class="btn primary" data-approve="${p.id}">Approve</button>` : `<button class="btn" data-publish="${p.id}">${p.status==="failed" ? "Try again" : "Publish now"}</button>`) +
     `<button class="btn" data-edit="${p.id}">Edit</button><button class="btn ghost warn" data-del="${p.id}">Delete</button>`;
-  return `<article class="post"><img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy"><div class="body"><div class="row">${chip}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
+  return `<article class="post"><img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy"><div class="body"><div class="row">${chip}${p.aiImage?`<span class="chip plain">AI image</span>`:""}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
 }
 function renderPosts(){
   const g = [["failed","Couldn't publish"],["needs_approval","Waiting for your approval"],["scheduled","Scheduled"],["published","Published"]];
@@ -552,11 +552,13 @@ function resizeImage(file){
 function brandCtx(){ const b=S.brand;
   return `Business: ${b.name}\nOwner/signer: ${b.owner}\nPhone: ${b.phone}\nService area: ${b.area}\nProducts: ${b.products}\nCurrent offer: ${b.offer}\nVoice: ${b.tone}\nNever mention: ${b.never}`; }
 
-function openComposer(id){
-  const p = id ? S.posts.find(x=>x.id===id) : {title:"",finish:"Sage shaker",platforms:["ig","fb","gbp"],caption:"",details:"",photo:null};
-  openDlg(`<header><div><h2>${id?"Edit post":"Create post from a job"}</h2><p class="muted small">Add a photo and a few notes. Foreman writes the caption.</p></div><button class="x" aria-label="Close">×</button></header>
+function openComposer(id, prefill){
+  const p = id ? S.posts.find(x=>x.id===id) : Object.assign({title:"",finish:"Sage shaker",platforms:["ig","fb","gbp"],caption:"",details:"",photo:null,aiImage:false}, prefill||{});
+  let aiImage = !!p.aiImage;
+  openDlg(`<header><div><h2>${id?"Edit post":prefill?"Review Foreman's post":"Create post from a job"}</h2><p class="muted small">${prefill?"Foreman wrote this. Edit anything, then add it to the schedule.":"Add a photo and a few notes. Foreman writes the caption."}</p></div><button class="x" aria-label="Close">×</button></header>
   <div class="content">
     <div class="preview"><img class="pic" id="pc-img" src="${esc(p.photo || cabinetSVG(p.finish))}" alt="Post image preview"></div>
+    <p class="small muted" id="pc-aiNote" style="margin:-8px 0 12px" ${aiImage?"":"hidden"}>🤖 AI-generated image. Use it for ideas and tips, not as a finished customer job.</p>
     <label class="field"><span>Job photo</span><input type="file" id="pc-photo" accept="image/*"></label>
     <label class="field"><span>Post title (for you)</span><input type="text" id="pc-title" value="${esc(p.title)}" placeholder="e.g. Navy kitchen in Short Pump"></label>
     <label class="field"><span>Finish</span><select id="pc-finish">${Object.keys(FINISHES).map(f=>`<option ${f===p.finish?"selected":""}>${f}</option>`).join("")}</select></label>
@@ -570,6 +572,7 @@ function openComposer(id){
   $("#pc-finish").onchange = e => { if (!photo) $("#pc-img").src = cabinetSVG(e.target.value); };
   $("#pc-photo").onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
+    aiImage = false; $("#pc-aiNote").hidden = true;
     uploading = true; $("#pc-save").disabled = true; $("#pc-save").textContent = "Uploading photo…";
     await safe(async ()=>{ const dataUrl = await resizeImage(f); $("#pc-img").src = dataUrl; const r = await api("uploadPhoto",{dataUrl}); photo = r.url; });
     uploading = false; $("#pc-save").disabled = false; $("#pc-save").textContent = id ? "Save changes" : "Add to schedule";
@@ -588,7 +591,7 @@ function openComposer(id){
     const plats=[...document.querySelectorAll(".pc-plat:checked")].map(x=>x.value);
     if (!plats.length) return toast("Pick at least one place to post.");
     if (!$("#pc-cap").value.trim()) return toast("Write or generate a caption first.");
-    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo};
+    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo, aiImage};
     const b=$("#pc-save"); b.disabled=true; b.textContent="Saving…";
     const r = await safe(()=>api("savePost",{item}));
     if (r){ dlg.close(); toast(id ? "Post saved." : r.post.status==="scheduled" ? "Added to the schedule." : "Added. It'll wait for your approval."); await safe(refresh); }
@@ -615,6 +618,28 @@ $("#checkRepliesBtn").onclick = async () => {
 };
 $("#newLeadBtn").onclick = openTestLead; $("#newLeadBtn2").onclick = openTestLead;
 $("#newPostBtn").onclick = () => openComposer();
+$("#genPostBtn").onclick = () => {
+  openDlg(`<header><div><h2>✨ Generate a post</h2><p class="muted small">Foreman writes the whole post. You review it before anything is scheduled.</p></div><button class="x" aria-label="Close">×</button></header>
+  <div class="content">
+    <label class="field"><span>What kind of post?</span><select id="gp-topic">
+      <option value="">Surprise me</option><option value="tip">Homeowner tip</option><option value="idea">Design idea</option>
+      <option value="closet">Closet and storage idea</option><option value="seasonal">Seasonal post</option>
+      <option value="offer">Promote the current offer</option><option value="faq">Answer a common question</option></select></label>
+    <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="checkbox" id="gp-img" checked> Create an image with AI</label>
+    <p class="small muted">AI images are great for tips and ideas. For finished jobs, use real photos with "Create post from a job".</p>
+    <p class="small" id="gp-msg" style="margin-top:10px"></p>
+  </div>
+  <footer><button class="btn primary" id="gp-go">Generate</button></footer>`);
+  $("#gp-go").onclick = async () => {
+    const b=$("#gp-go"), withImage=$("#gp-img").checked; b.disabled=true;
+    b.textContent = withImage ? "Writing and creating the image…" : "Writing…";
+    $("#gp-msg").textContent = withImage ? "This can take 20–40 seconds." : "";
+    const r = await safe(()=>api("generatePost",{topic:$("#gp-topic").value, withImage}));
+    if (!r){ b.disabled=false; b.textContent="Try again"; $("#gp-msg").textContent=""; return; }
+    openComposer(null, {title:r.title, caption:r.caption, finish:r.finish, photo:r.photo, aiImage:r.aiImage, details:""});
+    if (r.imageError) toast("Post written, but the image couldn't be created: " + r.imageError);
+  };
+};
 $("#saveBrand").onclick = () => safe(async ()=>{ const v={}; BRAND_KEYS.forEach(k=>v[k]=$("#b-"+k).value.trim()); await api("saveConfig",{key:"brand", value:v}); await refresh(); toast("Brand saved. New posts and messages will use it."); });
 $("#resetDemo").onclick = () => { if (confirm("Reset all demo data?")) safe(async ()=>{ S = await api("resetDemo"); render(); toast("Demo data reset."); }); };
 document.querySelectorAll("[data-set]").forEach(el=>{
