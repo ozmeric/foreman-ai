@@ -304,7 +304,7 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
 /* ============ CONFIG: change per deployment ============ */
 const CONFIG = {
   apiUrl: "https://foremanai.weblinallc.workers.dev/",  // your Cloudflare Worker URL
-  refreshSeconds: 60
+  refreshSeconds: 30
 };
 
 const FINISHES = {
@@ -662,13 +662,20 @@ document.addEventListener("click", async e => {
   try { await refresh(); } catch(e){ showGate(/PIN/.test(e.message) ? "" : e.message); }
   document.body.classList.remove("loading");
 })();
-setInterval(()=>{ if (S && document.visibilityState==="visible" && !dlg.open) refresh().catch(()=>{}); }, CONFIG.refreshSeconds*1000);
-// while a conversation is open, check the inbox every 30 seconds
-setInterval(async ()=>{
-  if (!S || !dlg.open || !currentLead || document.visibilityState!=="visible") return;
-  const l = S.leads.find(x=>x.id===currentLead); if (!l || !l.email) return;
-  try { await api("checkReplies"); S = await api("getAll"); render(); updateOpenLead(); } catch {}
-}, 30000);
+// Live updates: while the app is open, check Gmail and reload every 30 seconds
+let polling = false;
+async function livePoll(){
+  if (!S || polling || document.visibilityState!=="visible") return;
+  polling = true;
+  try {
+    const r = await api("checkReplies");
+    S = await api("getAll");
+    render(); updateOpenLead();
+    if (r && r.found && !(dlg.open && currentLead)) toast(r.newLeads ? "New email lead. Foreman replied." : "A customer replied. Foreman answered.");
+  } catch {} finally { polling = false; }
+}
+setInterval(livePoll, CONFIG.refreshSeconds*1000);
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible") livePoll(); });
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
 //]]>
 
