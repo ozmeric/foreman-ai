@@ -407,14 +407,16 @@ function render(){
 
 function postCard(p){
   const img = p.photo || cabinetSVG(p.finish);
-  const chip = p.status==="published" ? `<span class="chip">Published ${fmtDay(p.date)}</span>` : p.status==="scheduled" ? `<span class="chip brass">Scheduled ${fmtDay(p.date)}</span>` : `<span class="chip alert">Waiting for approval</span>`;
+  const chip = p.status==="published" ? `<span class="chip">Published ${fmtDay(p.date)}</span>` : p.status==="scheduled" ? `<span class="chip brass">Scheduled ${fmtDay(p.date)}</span>` : p.status==="failed" ? `<span class="chip alert">Couldn't publish</span>` : `<span class="chip alert">Waiting for approval</span>`;
+  const fbLink = p.fbUrl ? `<a class="small" href="${esc(p.fbUrl)}" target="_blank" rel="noopener" style="color:var(--green);font-weight:600">View on Facebook ↗</a>` : "";
+  const err = p.status==="failed" && p.error ? `<p class="small" style="color:var(--alert)">${esc(p.error)}</p>` : "";
   const acts = p.status==="published" ? "" :
-    (p.status==="needs_approval" ? `<button class="btn primary" data-approve="${p.id}">Approve</button>` : `<button class="btn" data-publish="${p.id}">Publish now</button>`) +
+    (p.status==="needs_approval" ? `<button class="btn primary" data-approve="${p.id}">Approve</button>` : `<button class="btn" data-publish="${p.id}">${p.status==="failed" ? "Try again" : "Publish now"}</button>`) +
     `<button class="btn" data-edit="${p.id}">Edit</button><button class="btn ghost warn" data-del="${p.id}">Delete</button>`;
-  return `<article class="post"><img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy"><div class="body"><div class="row">${chip}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p><div class="acts">${acts}</div></div></article>`;
+  return `<article class="post"><img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy"><div class="body"><div class="row">${chip}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
 }
 function renderPosts(){
-  const g = [["needs_approval","Waiting for your approval"],["scheduled","Scheduled"],["published","Published"]];
+  const g = [["failed","Couldn't publish"],["needs_approval","Waiting for your approval"],["scheduled","Scheduled"],["published","Published"]];
   $("#postGroups").innerHTML = g.map(([k,l])=>{ const items=S.posts.filter(p=>p.status===k).sort((a,b)=> k==="published" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
     return items.length ? `<div class="section-label">${l} <span class="muted small">${items.length}</span></div><div class="posts">${items.map(postCard).join("")}</div>` : ""; }).join("") || `<div class="empty">No posts yet. Create one from a finished job.</div>`;
 }
@@ -437,7 +439,7 @@ function renderPilot(){
     ["✉","#5E6863","Email", "Replies send from your Gmail", "Live"],
     ["⌂","#2F4A3E","Website contact form", "New inquiries flow in here", "Live"],
     ["IG","#C1356B","Instagram", "Connects after Meta approval", "Simulated"],
-    ["f","#3B5CA8","Facebook page", "Connects after Meta approval", "Simulated"],
+    ["f","#3B5CA8","Facebook page", S.fbConnected ? "Posts go live to your Facebook Page" : "Connects after Meta approval", S.fbConnected ? "Live" : "Simulated"],
     ["G","#2F7D4F","Google Business Profile", "Connects after Google approval", "Simulated"],
     ["💬","#8A5A36","Text messages", "Connects after carrier registration", "Simulated"]];
   $("#accounts").innerHTML = accts.map(a=>`<div class="acct"><span class="logo" style="background:${a[1]}">${a[0]}</span><div style="flex:1"><b>${a[2]}</b><div class="muted small">${esc(a[3])}</div></div><span class="chip ${a[4]==="Live"?"":"plain"}">${a[4]}</span></div>`).join("");
@@ -629,7 +631,7 @@ document.addEventListener("click", async e => {
     t.disabled = true;
     await safe(async ()=>{
       if (d.approve){ await api("approvePost",{id:d.approve}); toast("Approved and scheduled."); }
-      if (d.publish){ await api("publishPost",{id:d.publish}); toast("Published."); }
+      if (d.publish){ const r = await api("publishPost",{id:d.publish}); toast(r.post.status==="failed" ? "Couldn't publish. See the error on the post." : r.post.fbUrl ? "Posted live to Facebook." : "Published."); }
       if (d.del){ if (!confirm("Delete this post?")) return; await api("deletePost",{id:d.del}); toast("Post deleted."); }
       await refresh();
     });
