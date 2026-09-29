@@ -245,6 +245,7 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
     <section class="view" id="v-posts">
       <div class="head"><div><h1>Posts</h1><p class="muted">Job photos become posts for Instagram, Facebook and Google. Foreman writes them and publishes on schedule.</p></div>
         <div class="row"><button class="btn" id="genPostBtn">✨ Write a post with AI</button><button class="btn primary" id="newPostBtn">📷 Post a job photo</button></div></div>
+      <p class="small muted" id="postMode" style="margin:-8px 0 8px"></p>
       <div id="postGroups"></div>
     </section>
 
@@ -279,7 +280,9 @@ dialog::backdrop{background:rgba(10,15,12,.5)}
       <div class="panel" style="max-width:760px">
         <h2>Posting</h2>
         <div class="set"><div class="txt"><h3>Publish without asking me</h3><p class="muted small">Off means every post waits in "Needs you" until you approve it.</p></div><button class="toggle" role="switch" data-set="autoPublish" aria-label="Publish without asking me"></button></div>
-        <div class="set"><div class="txt"><h3>Posts per week</h3><p class="muted small">Foreman spreads them across the week and fills gaps with tips and past jobs.</p></div><select data-set="perWeek" style="width:auto"><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="set"><div class="txt"><h3>Who plans the posting calendar?</h3><p class="muted small" id="modeHelp"></p></div><select data-set="postingMode" style="width:auto"><option value="foreman">Foreman (fully managed)</option><option value="manual">Me (I schedule each post)</option></select></div>
+        <div class="set"><div class="txt"><h3>Posts per week</h3><p class="muted small">Foreman spreads them on good days: weekdays at 11 AM, Saturdays at 9 AM.</p></div><select data-set="perWeek" style="width:auto"><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
+        <div class="set" id="planRow"><div class="txt"><h3>Plan my week now</h3><p class="muted small">Foreman writes posts for any empty days in the next 7 days. It also does this on its own every hour.</p></div><button class="btn" id="planWeekBtn">✨ Plan now</button></div>
       </div>
       <div class="panel" style="max-width:760px">
         <h2>Lead follow-up</h2>
@@ -322,6 +325,8 @@ const STEPLBL = d => d===0 ? "Instant reply" : "Day "+d;
 /* ============ helpers ============ */
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtWhen = iso => { const d=new Date(iso); return d.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}) + " at " + d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); };
+const toLocalInput = iso => { const d=new Date(iso); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,16); };
 const fmtDay = iso => new Date(iso).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
 const ago = iso => { const m = Math.round((Date.now()-new Date(iso))/60000); if (m<1) return "just now"; if (m<60) return m+" min ago"; const h=Math.round(m/60); if (h<24) return h+" h ago"; return Math.round(h/24)+" d ago"; };
 const initials = n => String(n||"?").split(/\s+/).map(p=>p[0]).slice(0,2).join("").toUpperCase();
@@ -397,11 +402,11 @@ function render(){
 
   let nd = hot.map(l=>`<div class="need"><span class="avatar">${esc(initials(l.name))}</span><div class="grow"><b>${esc(l.name)}</b> wants to talk to you<div class="muted small">${esc(l.project)} · ${esc(l.source)}</div></div><button class="btn" data-lead="${l.id}">Open</button></div>`).join("");
   nd += appr.map(p=>`<div class="need"><span class="avatar">📸</span><div class="grow"><b>${esc(p.title)}</b> is ready to post<div class="muted small">Goes out ${fmtDay(p.date)} after you approve</div></div><button class="btn" data-approve="${p.id}">Approve</button></div>`).join("");
-  if (sched.length + appr.length < 2) nd += `<div class="need"><span class="avatar">📷</span><div class="grow"><b>Only ${sched.length + appr.length} post${sched.length + appr.length===1?"":"s"} left in the schedule</b><div class="muted small">Upload photos from recent jobs so Foreman keeps posting.</div></div><button class="btn" data-newpost="1">Add photos</button></div>`;
+  if (st.postingMode!=="foreman" && sched.length + appr.length < 2) nd += `<div class="need"><span class="avatar">📷</span><div class="grow"><b>Only ${sched.length + appr.length} post${sched.length + appr.length===1?"":"s"} left in the schedule</b><div class="muted small">Upload photos from recent jobs so Foreman keeps posting.</div></div><button class="btn" data-newpost="1">Add photos</button></div>`;
   $("#needs").innerHTML = nd || `<div class="empty">You're all caught up.</div>`;
 
   const cad = CADENCE[st.cadence] || CADENCE.std;
-  let up = sched.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3).map(p=>`<div class="need"><span class="avatar">📅</span><div class="grow">${esc(p.title)}<div class="muted small">${fmtDay(p.date)} · ${p.platforms.map(k=>PLAT[k]).join(", ")}</div></div></div>`).join("");
+  let up = sched.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3).map(p=>`<div class="need"><span class="avatar">📅</span><div class="grow">${esc(p.title)}<div class="muted small">${fmtWhen(p.date)} · ${p.platforms.map(k=>PLAT[k]).join(", ")}</div></div></div>`).join("");
   up += active.slice(0,3).map(l=>`<div class="need"><span class="avatar">💬</span><div class="grow">Follow up with ${esc(l.name)}<div class="muted small">${l.step<cad.length ? STEPLBL(cad[l.step])+" message" : "Sequence finished"}</div></div></div>`).join("");
   $("#upcoming").innerHTML = up || `<div class="empty">Nothing scheduled. Create a post from a recent job.</div>`;
 
@@ -411,15 +416,17 @@ function render(){
 function postCard(p){
   const img = p.photo || cabinetSVG(p.finish);
   const visual = (!p.photo && p.kind==="text") ? `<div class="pic textpost" aria-label="Text post"><span>${esc(String(p.caption).split("\n")[0])}</span></div>` : `<img class="pic" src="${esc(img)}" alt="${esc(p.finish)} cabinets" loading="lazy">`;
-  const chip = p.status==="published" ? `<span class="chip">Published ${fmtDay(p.date)}</span>` : p.status==="scheduled" ? `<span class="chip brass">Scheduled ${fmtDay(p.date)}</span>` : p.status==="failed" ? `<span class="chip alert">Couldn't publish</span>` : `<span class="chip alert">Waiting for approval</span>`;
+  const chip = p.status==="published" ? `<span class="chip">Published ${fmtDay(p.date)}</span>` : p.status==="scheduled" ? `<span class="chip brass">Posts ${fmtWhen(p.date)}</span>` : p.status==="failed" ? `<span class="chip alert">Couldn't publish</span>` : `<span class="chip alert">Waiting for approval · ${fmtWhen(p.date)}</span>`;
   const fbLink = p.fbUrl ? `<a class="small" href="${esc(p.fbUrl)}" target="_blank" rel="noopener" style="color:var(--green);font-weight:600">View on Facebook ↗</a>` : "";
   const err = p.status==="failed" && p.error ? `<p class="small" style="color:var(--alert)">${esc(p.error)}</p>` : "";
   const acts = p.status==="published" ? "" :
     (p.status==="needs_approval" ? `<button class="btn primary" data-approve="${p.id}">Approve</button>` : `<button class="btn" data-publish="${p.id}">${p.status==="failed" ? "Try again" : "Publish now"}</button>`) +
     `<button class="btn" data-edit="${p.id}">Edit</button><button class="btn ghost warn" data-del="${p.id}">Delete</button>`;
-  return `<article class="post">${visual}<div class="body"><div class="row">${chip}${p.aiImage?`<span class="chip plain">AI image</span>`:""}${(!p.photo && p.kind==="text")?`<span class="chip plain">Text post</span>`:""}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
+  return `<article class="post">${visual}<div class="body"><div class="row">${chip}${p.aiImage?`<span class="chip plain">AI image</span>`:""}${(!p.photo && p.kind==="text")?`<span class="chip plain">Text post</span>`:""}${p.plannedBy==="foreman"?`<span class="chip plain">Planned by Foreman</span>`:""}</div><h3>${esc(p.title)}</h3><div class="row">${p.platforms.map(k=>`<span class="chip plain">${PLAT[k]}</span>`).join("")}</div><p class="cap">${esc(p.caption)}</p>${err}${fbLink}<div class="acts">${acts}</div></div></article>`;
 }
 function renderPosts(){
+  const fm = S.settings.postingMode==="foreman";
+  $("#postMode").innerHTML = fm ? `🗓️ <b>Foreman is managing your calendar</b> (${esc(S.settings.perWeek||3)} posts a week). Change this in Autopilot.` : `🗓️ <b>You're managing the calendar.</b> Switch to Foreman-managed in Autopilot.`;
   const g = [["failed","Couldn't publish"],["needs_approval","Waiting for your approval"],["scheduled","Scheduled"],["published","Published"]];
   $("#postGroups").innerHTML = g.map(([k,l])=>{ const items=S.posts.filter(p=>p.status===k).sort((a,b)=> k==="published" ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
     return items.length ? `<div class="section-label">${l} <span class="muted small">${items.length}</span></div><div class="posts">${items.map(postCard).join("")}</div>` : ""; }).join("") || `<div class="empty">No posts yet. Create one from a finished job.</div>`;
@@ -438,7 +445,11 @@ function renderLeads(){
 const BRAND_KEYS = ["name","owner","phone","area","products","offer","tone","never"];
 function renderBrand(){ BRAND_KEYS.forEach(k=>{ const el=$("#b-"+k); if (document.activeElement!==el) el.value=S.brand[k]||""; }); }
 function renderPilot(){
+  if (!S.settings.postingMode) S.settings.postingMode = "manual";
   document.querySelectorAll("[data-set]").forEach(el=>{ const k=el.dataset.set; if (el.classList.contains("toggle")) el.setAttribute("aria-checked", !!S.settings[k]); else el.value=S.settings[k]; });
+  const fm = S.settings.postingMode==="foreman";
+  $("#modeHelp").textContent = fm ? "Foreman picks the days and times and writes posts to keep your week full. You can still add, edit or move any post." : "You choose when each post goes out. Foreman still writes captions when you ask.";
+  $("#planRow").hidden = !fm;
   const accts = [
     ["✉","#5E6863","Email", "Replies send from your Gmail", "Live"],
     ["⌂","#2F4A3E","Website contact form", "New inquiries flow in here", "Live"],
@@ -570,11 +581,22 @@ function openComposer(id, prefill){
     <label class="field"><span>About this job</span><textarea id="pc-details" placeholder="Where, what room, what changed, anything the homeowner loved">${esc(p.details||"")}</textarea></label>
     <div class="field"><span style="display:block;font-weight:600;font-size:.88rem;margin-bottom:5px">Post to</span><div class="checks">${Object.entries(PLAT).map(([k,v])=>`<label><input type="checkbox" value="${k}" class="pc-plat" ${p.platforms.includes(k)?"checked":""}> ${v}</label>`).join("")}</div></div>
     <label class="field"><span>Caption</span><textarea id="pc-cap" style="min-height:150px">${esc(p.caption)}</textarea></label>
+    ${p.status==="published" ? "" : `<div class="field"><span style="display:block;font-weight:600;font-size:.88rem;margin-bottom:5px">When should it post?</span>
+      <select id="pc-when">
+        ${id ? `<option value="keep">Keep: ${esc(fmtWhen(p.date))}</option>` : ""}
+        ${!id && S.settings.postingMode!=="foreman" ? `<option value="pick">Pick a date and time</option>` : ""}
+        ${!id ? `<option value="slot">${S.settings.postingMode==="foreman" ? "Foreman picks the best open slot" : "Next open slot"}</option>` : ""}
+        <option value="asap">As soon as possible (within the hour)</option>
+        ${id || S.settings.postingMode==="foreman" ? `<option value="pick">Pick a date and time</option>` : ""}
+      </select>
+      <input type="datetime-local" id="pc-date" style="margin-top:8px" ${!id && S.settings.postingMode!=="foreman" ? "" : "hidden"} value="${esc(toLocalInput(id ? p.date : Date.now()+86400000))}">
+      <p class="small muted" style="margin-top:6px">Foreman checks every hour and posts anything that's due. Use "Publish now" on the post to send it right away.</p></div>`}
     <button class="btn" id="pc-write">✨ Write caption</button>
   </div>
   <footer><button class="btn primary" id="pc-save">${id?"Save changes":"Add to schedule"}</button></footer>`);
   let photo = p.photo || null, uploading = false;
   $("#pc-finish").onchange = e => { if (!photo) $("#pc-img").src = cabinetSVG(e.target.value); };
+  if ($("#pc-when")) $("#pc-when").onchange = e => { $("#pc-date").hidden = e.target.value !== "pick"; };
   $("#pc-cap").addEventListener("input", ()=>{ const t=$("#pc-text span"); if (t) t.textContent = $("#pc-cap").value.split("\n")[0]; });
   $("#pc-photo").onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
@@ -598,10 +620,13 @@ function openComposer(id, prefill){
     const plats=[...document.querySelectorAll(".pc-plat:checked")].map(x=>x.value);
     if (!plats.length) return toast("Pick at least one place to post.");
     if (!$("#pc-cap").value.trim()) return toast("Write or generate a caption first.");
-    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo, aiImage, kind};
+    const item={id: id||undefined, title:$("#pc-title").value.trim(), finish:$("#pc-finish").value, details:$("#pc-details").value, platforms:plats, caption:$("#pc-cap").value.trim(), photo, aiImage, kind, topic:p.topic||""};
+    const w = $("#pc-when") ? $("#pc-when").value : "keep";
+    if (w==="asap") item.when="asap";
+    if (w==="pick") { const v=$("#pc-date").value; if (!v) return toast("Pick a date and time."); if (new Date(v) < new Date()) return toast("Pick a time in the future."); item.date=new Date(v).toISOString(); }
     const b=$("#pc-save"); b.disabled=true; b.textContent="Saving…";
     const r = await safe(()=>api("savePost",{item}));
-    if (r){ dlg.close(); toast(id ? "Post saved." : r.post.status==="scheduled" ? "Added to the schedule." : "Added. It'll wait for your approval."); await safe(refresh); }
+    if (r){ dlg.close(); toast((id ? "Saved. " : "") + (r.post.status==="needs_approval" ? `Waiting for your approval. Planned for ${fmtWhen(r.post.date)}.` : `Scheduled for ${fmtWhen(r.post.date)}.`)); await safe(refresh); }
     else { b.disabled=false; b.textContent= id?"Save changes":"Add to schedule"; }
   };
 }
@@ -625,6 +650,12 @@ $("#checkRepliesBtn").onclick = async () => {
 };
 $("#newLeadBtn").onclick = openTestLead; $("#newLeadBtn2").onclick = openTestLead;
 $("#newPostBtn").onclick = () => openComposer();
+$("#planWeekBtn").onclick = async () => {
+  const b=$("#planWeekBtn"); b.disabled=true; b.textContent="Planning…";
+  const r = await safe(()=>api("planWeek")); await safe(refresh);
+  b.disabled=false; b.textContent="✨ Plan now";
+  if (r) toast(r.planned ? `Foreman planned ${r.planned} post${r.planned>1?"s":""}. See the Posts page.` : "Your week is already full.");
+};
 $("#genPostBtn").onclick = () => {
   openDlg(`<header><div><h2>✨ Write a post with AI</h2><p class="muted small">Foreman writes the whole post. You review it before anything is scheduled.</p></div><button class="x" aria-label="Close">×</button></header>
   <div class="content">
@@ -642,7 +673,7 @@ $("#genPostBtn").onclick = () => {
     $("#gp-msg").textContent = withImage ? "This can take 20–40 seconds." : "";
     const r = await safe(()=>api("generatePost",{topic:$("#gp-topic").value, withImage}));
     if (!r){ b.disabled=false; b.textContent="Try again"; $("#gp-msg").textContent=""; return; }
-    openComposer(null, {title:r.title, caption:r.caption, finish:r.finish, photo:r.photo, aiImage:r.aiImage, details:"", kind:"text"});
+    openComposer(null, {title:r.title, caption:r.caption, finish:r.finish, photo:r.photo, aiImage:r.aiImage, details:"", kind:"text", topic:r.topic});
     if (r.imageError) toast("Post written, but the image couldn't be created: " + r.imageError);
   };
 };
