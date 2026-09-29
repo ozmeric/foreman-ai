@@ -1,7 +1,7 @@
 # Foreman AI — Demo Guide
 **Client:** Cabinet and Closet Express (contact: Mark)
 **Built by:** Weblina LLC · Foreman AI · Powered by BuildFlow
-**Last updated:** September 28, 2026 (code version v7)
+**Last updated:** September 28, 2026 (code version v9)
 
 This is the single reference for the Foreman demo: what it does, how it's set up, how to update it, how to run the demo, what to do when something breaks, and what's planned next.
 
@@ -144,7 +144,7 @@ Property changes take effect immediately. No redeploy needed.
 After every change to `Code.gs`:
 1. Save (Cmd + S).
 2. **Deploy → Manage deployments.** If there's more than one deployment, update **every** one: pencil ✏️ → Version: **New version** → Deploy.
-3. Open the `/exec` URL and confirm `"version":"v7"` (or whatever the latest is).
+3. Open the `/exec` URL and confirm `"version":"v9"` (or whatever the latest is).
 4. If you created a *new* deployment, its URL is different: update `APPS_SCRIPT_URL` in Cloudflare.
 
 Time triggers (the 5-minute inbox check, hourly autopilot) always run the latest *saved* code. The app runs the *deployed* version. If they behave differently, a deployment is out of date.
@@ -213,8 +213,8 @@ Quiet hours (default 8 pm – 8 am) pause **automatic follow-ups only**. Replies
 ## 8. Test checklist (before every demo)
 
 1. Autopilot → **Reset demo data**.
-2. Run **testAI** in Apps Script → log shows `Code version: v7` and `AI OK`.
-3. Open the Cloudflare `/exec` URL → `"version":"v7"` and `"model":"gemini-3.6-flash"`.
+2. Run **testAI** in Apps Script → log shows `Code version: v9` and `AI OK`.
+3. Open the Cloudflare `/exec` URL → `"version":"v9"` and `"model":"gemini-3.6-flash"`.
 4. Send a test lead with your personal email → reply arrives in the inbox.
 5. Reply to it → Foreman answers within about 30 seconds with the lead open.
 6. Send "How much would a closet cost? Can you come Thursday?" → no price in the reply, lead in **Needs you**, alert email arrives.
@@ -246,7 +246,7 @@ Be upfront that social posting and texting are simulated until his accounts are 
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Cannot read properties of null (reading 'getSheetByName')` | Live app on old code, or script not attached to the sheet | Paste latest `Code.gs`, deploy a new version of **every** deployment; check the Cloudflare URL points at a v7 deployment |
+| `Cannot read properties of null (reading 'getSheetByName')` | Live app on old code, or script not attached to the sheet | Paste latest `Code.gs`, deploy a new version of **every** deployment; check the Cloudflare URL points at a v9 deployment |
 | PIN accepted but screen doesn't change | Old `index.html` (PIN-screen bug) | Replace `index.html` on GitHub, Cmd + Shift + R |
 | Worker URL shows "Hello World!" | Worker code never deployed | Edit code → paste `worker.js` → Deploy |
 | "Backend returned HTML" | Apps Script access isn't **Anyone**, or the deployment is stale | Manage deployments → Anyone → New version |
@@ -318,11 +318,26 @@ Texting will work the same way as email.
 
 ## 12a. AI-generated posts
 
-- **Posts → ✨ Generate a post**: pick a type (tip, design idea, closet idea, seasonal, offer, FAQ, or Surprise me). Foreman writes the title and caption and, if checked, creates a photorealistic image with Gemini's image model.
+**Two ways to post:** **📷 Post a job photo** (real photo, Foreman writes the caption) and **✨ Write a post with AI** (Foreman writes a text post; add a photo optionally). AI images are turned off in the app for now (Gemini's free tier allows 0 image generations); the code for them stays in place for later.
+
+- **Posts → ✨ Generate a post**: pick a type (tip, design idea, closet idea, seasonal, offer, FAQ, or Surprise me). Foreman writes the title and caption and, if **Create an image with AI** is checked (off by default; needs Gemini billing), creates a photorealistic image with Gemini's image model.
 - The result opens for review; nothing is scheduled until you click **Add to schedule**.
 - AI images get an **AI image** tag. Use them for tips and ideas, never as a "finished customer job". Real jobs use real photos via **Create post from a job**.
 - Image model: `gemini-3.1-flash-image` (fallback `gemini-2.5-flash-image`); override with `GEMINI_IMAGE_MODEL`. Image models may have no free-tier quota, so billing may be required.
 - Test: run `testImage` in Apps Script.
+
+### Who plans the calendar (Autopilot tab)
+- **Foreman (fully managed):** Foreman picks days from **Posts per week** (2: Tue/Sat · 3: Tue/Thu/Sat · 4: Mon/Wed/Fri/Sat · 5: Mon/Tue/Thu/Fri/Sat; weekdays 11 AM, Saturdays 9 AM) and, every hour, writes AI text posts for any empty days in the next 7 days (max 3 per run). Tagged **Planned by Foreman**. **✨ Plan now** does it immediately.
+- **Me (I schedule each post):** nothing is planned automatically; new posts default to **Pick a date and time**; a reminder appears when fewer than 2 posts are scheduled.
+- Either way, any post can be edited, moved, published now or deleted.
+- With **Publish without asking me** off, Foreman-planned posts wait in **Needs you** for approval. Recommended while using a real Facebook Page.
+- New installs default to **Me** and approval on, so nothing posts to a real page by surprise.
+
+### Scheduling posts
+- Every post card shows exactly when it goes out, e.g. **Posts Wed, Sep 30 at 10:00 AM**.
+- When creating or editing a post, **When should it post?**: Next open slot (about 10 AM, two days after the last scheduled post), As soon as possible (within the hour), or Pick a date and time.
+- The hourly autopilot publishes anything that's due. **Publish now** sends it immediately.
+- With **Publish without asking me** off, posts wait in **Needs you** for approval and show their planned time.
 
 ## 12b. Real Facebook posting (demo)
 
@@ -359,7 +374,7 @@ Start the Meta, Google Business Profile and Twilio approvals the week he signs; 
 ### Before the meeting
 - [ ] Gemini billing on (or Anthropic key added)
 - [ ] `GEMINI_MODEL` = `gemini-3.6-flash`; backups set
-- [ ] `/exec` shows v7; app hard-refreshed
+- [ ] `/exec` shows v9; app hard-refreshed
 - [ ] `NOTIFY_EMAIL` set (use Mark's email if you want him to receive the alert live)
 - [ ] Autopilot → Reset demo data
 - [ ] Full test run from section 8
